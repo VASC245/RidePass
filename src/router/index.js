@@ -23,7 +23,7 @@ import SellPage from "@/components/ventas/SellPage.vue";
 import AvailableTours from "@/components/ventas/AvailableTours.vue";
 
 // Página de conductor
-import ConductorTours from "@/components/ConductorTours.vue";
+import conductorTours from "@/components/conductorTours.vue";
 
 const routes = [
   {
@@ -93,7 +93,7 @@ const routes = [
       {
         path: "/mis-tours",
         name: "ConductorTours",
-        component: ConductorTours,
+        component: conductorTours,
       },
     ],
   },
