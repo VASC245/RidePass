@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>🎟️ Ticket ChivaPass</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fafb;
+      padding: 20px;
+      color: #333;
+    }
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .header img {
+      max-height: 60px;
+    }
+    .details {
+      margin-bottom: 20px;
+    }
+    .details p {
+      margin: 6px 0;
+      font-size: 14px;
+    }
+    .qr {
+      text-align: center;
+      margin-top: 20px;
+    }
+    .qr img {
+      width: 150px;
+      height: 150px;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #777;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <img src="https://tusitio.com/logo-chivapass.png" alt="ChivaPass Logo">
+      <h2>🎟️ Tu Ticket de Viaje</h2>
+    </div>
+
+    <div class="details">
+      <p><strong>Cliente:</strong> {{Cliente}}</p>
+      <p><strong>Correo:</strong> {{Correo}}</p>
+      <p><strong>Tour:</strong> {{Tour}}</p>
+      <p><strong>Chiva:</strong> {{Chiva}}</p>
+      <p><strong>Fecha y Hora:</strong> {{Fecha}}</p>
+      <p><strong>Asientos:</strong> {{Asientos}}</p>
+    </div>
+
+    <div class="qr">
+      <p>📲 Presenta este código al abordar</p>
+      <img src="{{QR}}" alt="Código QR">
+    </div>
+
+    <div class="footer">
+      <p>Gracias por confiar en <strong>ChivaPass</strong>. ¡Disfruta tu tour! 🚍✨</p>
+    </div>
+  </div>
+</body>
+</html>
