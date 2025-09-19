@@ -16,7 +16,7 @@ onMounted(async () => {
   if (authStore.user) {
     const role = authStore.user.role;
     if (role === "dueño") {
-      router.push("/owner/dashboard");
+      router.push("/dashboard");
     } else if (role === "agencia") {
       router.push("/agencia/tours-disponibles");
     }
