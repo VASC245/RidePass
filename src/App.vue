@@ -14,11 +14,10 @@ onMounted(async () => {
   await authStore.init();
 
   if (authStore.user) {
-    const role = authStore.user.role;
-    if (role === "dueño") {
-      router.push("/dashboard");
-    } else if (role === "agencia") {
-      router.push("/agencia/tours-disponibles");
+    if (authStore.user.role === "dueño") {
+      router.push("/dashboard"); // ✅ corregido
+    } else if (authStore.user.role === "agencia") {
+      router.push("/tours-disponibles"); // ✅ corregido
     }
   } else {
     router.push("/login");

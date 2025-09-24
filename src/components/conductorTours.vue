@@ -21,7 +21,8 @@
           Estado:
           <span :class="{
             'text-yellow-600': tour.status === 'pendiente',
-            'text-green-600': tour.status === 'en_curso'
+            'text-green-600': tour.status === 'en_curso',
+            'text-red-600': tour.status === 'finalizado'
           }">
             {{ tour.status }}
           </span>
@@ -60,39 +61,31 @@ const tours = ref([]);
 const fetchTours = async () => {
   if (!auth.user) return;
 
-  // Buscar chiva asignada a este conductor
-  const { data: driver, error: driverError } = await supabase
+  // 🔹 Buscar chiva asignada al conductor logueado
+  const { data: driver } = await supabase
     .from("drivers")
     .select("chiva_id")
     .eq("user_id", auth.user.id)
     .single();
 
-  if (driverError || !driver) {
+  if (!driver) {
     tours.value = [];
     return;
   }
 
-  // Traer tours de esa chiva que aún no han finalizado
-  const { data, error } = await supabase
+  // 🔹 Obtener tours de esa chiva
+  const { data } = await supabase
     .from("assigned_chivas")
     .select("id, departure_at, status, tours(title), chivas(name)")
-    .eq("chiva_id", driver.chiva_id);
+    .eq("chiva_id", driver.chiva_id)
+    .order("departure_at", { ascending: true });
 
-  if (!error) {
-    tours.value = data || [];
-  }
+  tours.value = data || [];
 };
 
 const updateStatus = async (id, newStatus) => {
-  if (newStatus === "finalizado") {
-    // 🚀 Borrar asignación completa (liberar chiva para otro horario)
-    await supabase.from("assigned_chivas").delete().eq("id", id);
-  } else {
-    // Comenzar tour (cambiar a en_curso)
-    await supabase.from("assigned_chivas").update({ status: newStatus }).eq("id", id);
-  }
-
-  fetchTours();
+  await supabase.from("assigned_chivas").update({ status: newStatus }).eq("id", id);
+  fetchTours(); // 🔄 refrescar la lista del conductor
 };
 
 onMounted(fetchTours);

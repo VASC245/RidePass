@@ -2,6 +2,7 @@
   <div class="max-w-6xl mx-auto p-4 space-y-6">
     <h1 class="text-2xl font-bold text-center">Tours disponibles</h1>
 
+    <!-- Lista de tours -->
     <div
       v-for="tour in assignedTours"
       :key="tour.id"
@@ -51,11 +52,12 @@
           ✖
         </button>
 
-        <h3 class="text-lg font-bold mb-4">Asientos disponibles</h3>
+        <h3 class="text-lg font-bold mb-4">Mapa de asientos</h3>
         <SeatGrid :assignedChivaId="selectedTourId" :readonly="true" />
       </div>
     </div>
 
+    <!-- Si no hay tours -->
     <p
       v-if="!loading && assignedTours.length === 0"
       class="text-gray-500 text-center"
@@ -110,8 +112,8 @@ const fetchTours = async () => {
         )
       `);
 
-    // 🔹 Solo filtrar si es dueño
-    if (auth.user && auth.user.role === "dueno") {
+    // 🔹 Si es dueño, solo sus tours
+    if (auth.user && auth.user.role === "dueño") {
       query = query.eq("tours.user_id", auth.user.id);
     }
 
@@ -119,7 +121,7 @@ const fetchTours = async () => {
 
     if (error) throw error;
 
-    // 🔹 Mostrar solo tours válidos (evitar Sin nombre / $0)
+    // 🔹 Mostrar solo tours válidos
     assignedTours.value = (data || []).filter(
       (item) => item.tours?.title && item.tours?.base_price > 0
     );

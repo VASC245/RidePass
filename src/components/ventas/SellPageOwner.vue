@@ -8,7 +8,7 @@
 
       <div v-if="loading" class="text-gray-500">Cargando tours...</div>
       <div v-else-if="tours.length === 0" class="text-gray-500">
-        No hay tours programados.
+        No hay tours activos.
       </div>
 
       <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -24,6 +24,17 @@
             Hora salida: {{ formatHour(tour.departure_time) }}
           </p>
           <p class="text-sm text-gray-600">Precio: ${{ tour.base_price }}</p>
+          <p class="text-xs mt-1">
+            Estado:
+            <span
+              :class="{
+                'text-yellow-600': tour.status === 'pendiente',
+                'text-green-600': tour.status === 'en_curso'
+              }"
+            >
+              {{ tour.status }}
+            </span>
+          </p>
         </BaseCard>
       </div>
     </BaseCard>
@@ -89,6 +100,7 @@ const loadTours = async () => {
       .select(`
         id,
         departure_at,
+        status,
         tours (
           id,
           title,
@@ -100,7 +112,8 @@ const loadTours = async () => {
           name
         )
       `)
-      .eq("tours.user_id", auth.user.id); // 🔹 solo sus tours
+      .eq("tours.user_id", auth.user.id) // 🔹 solo tours creados por este dueño
+      .in("status", ["pendiente", "en_curso"]); // 🔹 solo mostrar activos
 
     if (error) throw error;
 
@@ -112,6 +125,7 @@ const loadTours = async () => {
         name: item.tours?.title,
         base_price: item.tours?.base_price,
         chiva: item.chivas?.name || "Sin chiva asignada",
+        status: item.status,
       }));
 
     if (route.query.assignedId) {
@@ -142,6 +156,9 @@ const selectTour = (tour) => {
   selectedTour.value = tour;
   selectedSeats.value = [];
   checkoutMode.value = false;
+
+  // 🔹 recargar asientos si cambia de tour
+  if (seatGridRef.value) seatGridRef.value.refreshSeats();
 };
 
 const updateSeats = (seats) => {
