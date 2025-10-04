@@ -1,21 +1,39 @@
 <template>
   <BaseCard class="max-w-2xl mx-auto p-6">
-    <!-- Título -->
     <h2 class="text-2xl font-extrabold mb-6 text-gray-800 text-center">
       🧾 Finalizar compra
     </h2>
 
-    <!-- Formulario inicial -->
+    <!-- Formulario -->
     <form
       class="space-y-6"
       @submit.prevent="confirmPurchase"
       v-if="!qrVisible"
     >
-      <!-- Inputs -->
+      <!-- Campos del cliente -->
       <BaseInput
         v-model="customerName"
         name="name"
         placeholder="Nombre del cliente"
+        required
+      />
+      <BaseInput
+        v-model="customerCedula"
+        name="cedula"
+        placeholder="Número de cédula"
+        required
+      />
+      <BaseInput
+        v-model="customerPhone"
+        type="tel"
+        name="phone"
+        placeholder="Número de teléfono"
+        required
+      />
+      <BaseInput
+        v-model="customerAddress"
+        name="address"
+        placeholder="Dirección del cliente"
         required
       />
       <BaseInput
@@ -87,14 +105,18 @@ const props = defineProps({
 });
 const emit = defineEmits(['purchaseConfirmed']);
 
+// Campos del cliente
 const customerName = ref('');
+const customerCedula = ref('');
+const customerPhone = ref('');
+const customerAddress = ref('');
 const customerEmail = ref('');
 const qrCodeUrl = ref('');
 const qrVisible = ref(false);
 const countdown = ref(10);
-
 let timerId = null;
 
+// Formatear hora legible
 const formatHour = (dateTime) => {
   if (!dateTime) return 'Sin hora';
   return new Date(dateTime).toLocaleString([], {
@@ -103,50 +125,56 @@ const formatHour = (dateTime) => {
   });
 };
 
+// Confirmar compra
 const confirmPurchase = async () => {
-  if (!customerName.value || !customerEmail.value) {
-    alert("⚠️ Debes ingresar el nombre y correo del cliente.");
+  if (
+    !customerName.value ||
+    !customerEmail.value ||
+    !customerCedula.value ||
+    !customerPhone.value ||
+    !customerAddress.value
+  ) {
+    alert("⚠️ Debes completar todos los campos del cliente.");
     return;
   }
 
-  // 🔹 Generar QR
+  // Generar QR
   const text = `Tour: ${props.selectedTour.name}, Chiva: ${props.selectedTour.chiva}, Asientos: ${props.selectedSeats.join(', ')}`;
   qrCodeUrl.value = await QRCode.toDataURL(text);
 
-  // 🔹 Actualizar asientos en Supabase
+  // Actualizar asientos
   await supabase
     .from('seats')
     .update({ status: 'pagado' })
     .in('seat_number', props.selectedSeats)
     .eq('assigned_chiva_id', props.selectedTour.id);
 
-  // 🔹 Enviar correo dinámico con EmailJS
+  // Enviar correo
   sendEmail();
 
-  // 🔹 Mostrar QR y contador
+  // Mostrar QR
   qrVisible.value = true;
   countdown.value = 10;
-
   timerId = setInterval(() => {
-    if (countdown.value > 1) {
-      countdown.value--;
-    } else {
+    if (countdown.value > 1) countdown.value--;
+    else {
       clearInterval(timerId);
       qrVisible.value = false;
-      emit('purchaseConfirmed'); // Reinicia SellPage
+      emit('purchaseConfirmed');
     }
   }, 1000);
 };
 
-// 🔹 Enviar email con EmailJS (siempre al admin, opcional al cliente)
+// Enviar correo con EmailJS
 const sendEmail = () => {
-  const destinatario = customerEmail.value
-    ? customerEmail.value
-    : "chivaspass@gmail.com";
+  const destinatario = customerEmail.value || "chivaspass@gmail.com";
 
   const templateParams = {
     cliente: customerName.value,
     correo: destinatario,
+    cedula: customerCedula.value,
+    telefono: customerPhone.value,
+    direccion: customerAddress.value,
     tour: props.selectedTour.name,
     chiva: props.selectedTour.chiva,
     fecha: formatHour(props.selectedTour.departure_time),
@@ -157,18 +185,14 @@ const sendEmail = () => {
 
   emailjs
     .send(
-      "service_384ghjp",   // 👈 tu Service ID
-      "template_ax9ioca",  // 👈 tu Template ID
+      "service_384ghjp",     // 👈 tu Service ID
+      "template_ax9ioca",    // 👈 tu Template ID (usa el nuevo HTML)
       templateParams,
-      "3vYtcZkms5NAqUjGI"  // 👈 tu Public Key
+      "3vYtcZkms5NAqUjGI"    // 👈 tu Public Key
     )
     .then(
-      (response) => {
-        console.log("✅ Ticket enviado:", response.status, response.text);
-      },
-      (error) => {
-        console.error("❌ Error enviando ticket:", error);
-      }
+      (response) => console.log("✅ Ticket enviado:", response.status, response.text),
+      (error) => console.error("❌ Error enviando ticket:", error)
     );
 };
 </script>

@@ -1,19 +1,26 @@
 <template>
-  <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div
+    class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+  >
     <BaseCard class="w-full max-w-md">
-      <h3 class="text-lg font-bold mb-4">Enviar Ticket</h3>
+      <h3 class="text-lg font-bold mb-4 text-gray-800 text-center">
+        📧 Enviar Ticket al Correo
+      </h3>
 
       <form
         action="https://formsubmit.co/chivaspass@gmail.com"
         method="POST"
         class="space-y-4"
       >
-        <!-- Correos -->
-        <BaseInput type="hidden" name="CorreoCliente" :value="customerEmail" />
+        <!-- Datos del cliente -->
+        <BaseInput type="hidden" name="Cliente" :value="customerName" />
+        <BaseInput type="hidden" name="Cedula" :value="customerCedula" />
+        <BaseInput type="hidden" name="Telefono" :value="customerPhone" />
+        <BaseInput type="hidden" name="Direccion" :value="customerAddress" />
+        <BaseInput type="hidden" name="Correo" :value="customerEmail" />
         <BaseInput type="hidden" name="_replyto" :value="customerEmail" />
 
         <!-- Datos del ticket -->
-        <BaseInput type="hidden" name="Cliente" :value="customerName" />
         <BaseInput type="hidden" name="Tour" :value="selectedTour?.name" />
         <BaseInput type="hidden" name="Chiva" :value="selectedTour?.chiva" />
         <BaseInput
@@ -26,6 +33,7 @@
           name="Asientos"
           :value="selectedSeats.join(', ')"
         />
+        <BaseInput type="hidden" name="Total" :value="`$${selectedTour?.base_price * selectedSeats.length}`" />
         <BaseInput type="hidden" name="QR" :value="qrCodeUrl" />
 
         <!-- Configuración de FormSubmit -->
@@ -41,8 +49,8 @@
 
         <!-- Vista previa del QR -->
         <div v-if="qrCodeUrl" class="text-center">
-          <p class="mb-2 text-sm text-gray-600">Este es tu ticket digital</p>
-          <img :src="qrCodeUrl" alt="QR Code" class="mx-auto w-40 h-40" />
+          <p class="mb-2 text-sm text-gray-600">🎫 Este es tu ticket digital</p>
+          <img :src="qrCodeUrl" alt="QR Code" class="mx-auto w-40 h-40 rounded-lg shadow-md border" />
           <a
             :href="qrCodeUrl"
             download="ticket.png"
@@ -52,12 +60,13 @@
           </a>
         </div>
 
-        <!-- Botón de enviar -->
+        <!-- Botón enviar -->
         <BaseButton type="submit" full>
-          Enviar Ticket al Correo
+          ✉️ Enviar Ticket al Correo
         </BaseButton>
       </form>
 
+      <!-- Botón cerrar -->
       <BaseButton variant="secondary" full class="mt-3" @click="$emit('close')">
         Cerrar
       </BaseButton>
@@ -72,6 +81,9 @@ import BaseInput from '@/components/ui/BaseInput.vue';
 
 const props = defineProps({
   customerName: String,
+  customerCedula: String,
+  customerPhone: String,
+  customerAddress: String,
   customerEmail: String,
   selectedTour: Object,
   selectedSeats: Array,
