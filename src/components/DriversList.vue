@@ -1,20 +1,27 @@
 <template>
-  <div class="p-6 max-w-4xl mx-auto">
-    <h2 class="text-2xl font-bold mb-4">Lista de Conductores</h2>
+  <div class="p-8 max-w-5xl mx-auto space-y-8">
+    <!-- Título -->
+    <h2 class="text-3xl font-extrabold text-center text-gray-800">
+      👨‍✈️ Lista de Conductores
+    </h2>
 
-    <div v-if="drivers.length === 0" class="text-gray-500">
-      No hay conductores registrados.
+    <!-- Sin conductores -->
+    <div v-if="drivers.length === 0" class="text-gray-500 text-center italic">
+      🚫 No hay conductores registrados.
     </div>
 
-    <ul v-else class="space-y-4">
+    <!-- Lista de conductores -->
+    <ul v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
       <li
         v-for="driver in drivers"
         :key="driver.id"
-        class="p-4 bg-white rounded-lg shadow border hover:bg-gray-50 transition"
+        class="p-6 bg-white rounded-2xl shadow-sm border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all"
       >
-        <h3 class="text-lg font-semibold">Nombre: {{ driver.name }}</h3>
-        <p class="text-sm text-gray-600">Cédula: {{ driver.cedula }}</p>
-        <p class="text-sm text-gray-600">Teléfono: {{ driver.phone }}</p>
+        <h3 class="text-xl font-bold text-gray-800 mb-2">
+          {{ driver.name }}
+        </h3>
+        <p class="text-sm text-gray-600">🆔 Cédula: <span class="font-medium">{{ driver.cedula }}</span></p>
+        <p class="text-sm text-gray-600">📞 Teléfono: <span class="font-medium">{{ driver.phone }}</span></p>
       </li>
     </ul>
   </div>

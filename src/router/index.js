@@ -17,13 +17,14 @@ import TourForm from "@/components/owner/TourForm.vue";
 import AssignChivaToTour from "@/components/owner/AssignChivaToTour.vue";
 import ScanBoarding from "@/components/owner/ScanBoarding.vue";
 import SellPageOwner from "@/components/ventas/SellPageOwner.vue";
+import ToursList  from "@/components/ToursList.vue";
 
 // Páginas de agencia
 import SellPage from "@/components/ventas/SellPage.vue";
 import AvailableTours from "@/components/ventas/AvailableTours.vue";
 
 // Página de conductor
-import conductorTours from "@/components/conductorTours.vue";
+import ConductorTours from "@/components/conductorTours.vue";
 
 const routes = [
   {
@@ -41,60 +42,22 @@ const routes = [
     component: SidebarLayout,
     children: [
       // 👑 Dueño
-      {
-        path: "/dashboard",
-        name: "Dashboard",
-        component: Dashboard,
-      },
-      {
-        path: "/chivas",
-        name: "Chivas",
-        component: ChivasList,
-      },
-      {
-        path: "/conductores",
-        name: "Conductores",
-        component: DriverForm,
-      },
-      {
-        path: "/nuevo-tour",
-        name: "TourForm",
-        component: TourForm,
-      },
-      {
-        path: "/asignar",
-        name: "AsignarChivaToTour",
-        component: AssignChivaToTour,
-      },
-      {
-        path: "/embarque",
-        name: "Embarque",
-        component: ScanBoarding,
-      },
-      {
-        path: "/mis-ventas",
-        name: "MisVentas",
-        component: SellPageOwner,
-      },
+      { path: "/dashboard", name: "Dashboard", component: Dashboard },
+      { path: "/chivas", name: "Chivas", component: ChivasList },
+      { path: "/conductores", name: "Conductores", component: DriverForm },
+      { path: "/nuevo-tour", name: "TourForm", component: TourForm },
+      { path: "/asignar", name: "AsignarChivaToTour", component: AssignChivaToTour },
+      { path: "/embarque", name: "Embarque", component: ScanBoarding },
+      { path: "/mis-ventas", name: "MisVentas", component: SellPageOwner },
+      {path: "/tours", name:"Tours", component: ToursList},
 
       // 🏢 Agencia
-      {
-        path: "/vender-boletos",
-        name: "SellPage",
-        component: SellPage,
-      },
-      {
-        path: "/tours-disponibles",
-        name: "AvailableTours",
-        component: AvailableTours,
-      },
+      { path: "/vender-boletos", name: "SellPage", component: SellPage },
+      { path: "/tours-disponibles", name: "AvailableTours", component: AvailableTours },
 
       // 🚌 Conductor
-      {
-        path: "/mis-tours",
-        name: "ConductorTours",
-        component: conductorTours,
-      },
+      { path: "/mis-tours", name: "ConductorTours", component: ConductorTours },
+      { path: "/escanear", name: "ConductorScan", component: ScanBoarding }, // 🔹 nuevo
     ],
   },
 ];
@@ -108,15 +71,11 @@ const router = createRouter({
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
-  // Inicializar sesión si aún no
   if (!authStore.user) {
     await authStore.init();
   }
 
-  // Rutas públicas
   const publicPages = ["/login", "/register"];
-
-  // Si NO está logueado y quiere entrar a ruta protegida → login
   if (!authStore.user && !publicPages.includes(to.path)) {
     return next("/login");
   }

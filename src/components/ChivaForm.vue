@@ -1,61 +1,103 @@
 <template>
-  <div class="bg-white rounded-xl shadow p-6">
-    <h3 class="text-lg font-bold mb-4">
-      {{ editing ? "Editar chiva" : "Registrar nueva chiva" }}
+  <div class="bg-white rounded-2xl shadow-lg p-8 border border-gray-200">
+    <!-- Título -->
+    <h3 class="text-2xl font-extrabold mb-6 text-gray-800 text-center">
+      {{ editing ? "✏️ Editar chiva" : "🚌 Registrar nueva chiva" }}
     </h3>
 
-    <form @submit.prevent="saveChiva" class="space-y-4">
+    <!-- Formulario -->
+    <form @submit.prevent="saveChiva" class="space-y-5">
       <div>
-        <label class="block mb-1 text-sm font-medium">Nombre</label>
-        <input v-model="form.name" type="text" class="w-full border rounded px-3 py-2" required />
+        <label class="block mb-1 text-sm font-medium text-gray-700">Nombre</label>
+        <input
+          v-model="form.name"
+          type="text"
+          class="w-full border border-gray-300 rounded-xl px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+          required
+        />
       </div>
 
       <div>
-        <label class="block mb-1 text-sm font-medium">Placa</label>
-        <input v-model="form.plate" type="text" class="w-full border rounded px-3 py-2" required />
+        <label class="block mb-1 text-sm font-medium text-gray-700">Placa</label>
+        <input
+          v-model="form.plate"
+          type="text"
+          class="w-full border border-gray-300 rounded-xl px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+          required
+        />
       </div>
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block mb-1 text-sm font-medium">Código</label>
-          <input v-model="form.code" type="text" class="w-full border rounded px-3 py-2" required />
+          <label class="block mb-1 text-sm font-medium text-gray-700">Código</label>
+          <input
+            v-model="form.code"
+            type="text"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+            required
+          />
         </div>
 
         <div>
-          <label class="block mb-1 text-sm font-medium">Capacidad</label>
-          <input v-model.number="form.capacity" type="number" class="w-full border rounded px-3 py-2" required />
+          <label class="block mb-1 text-sm font-medium text-gray-700">Capacidad</label>
+          <input
+            v-model.number="form.capacity"
+            type="number"
+            class="w-full border border-gray-300 rounded-xl px-4 py-2.5 shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+            required
+          />
         </div>
       </div>
 
-      <div class="flex gap-2">
-        <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded">
-          {{ editing ? "Guardar cambios" : "Guardar chiva" }}
+      <!-- Botones -->
+      <div class="flex gap-3 pt-2">
+        <button
+          type="submit"
+          class="flex-1 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl font-semibold shadow-sm transition active:scale-95"
+        >
+          {{ editing ? "💾 Guardar cambios" : "✅ Guardar chiva" }}
         </button>
-        <button v-if="editing" type="button" @click="cancelEdit" class="bg-gray-400 text-white px-4 py-2 rounded">
-          Cancelar
+        <button
+          v-if="editing"
+          type="button"
+          @click="cancelEdit"
+          class="bg-gray-400 hover:bg-gray-500 text-white px-5 py-2.5 rounded-xl font-semibold shadow-sm transition active:scale-95"
+        >
+          ❌ Cancelar
         </button>
       </div>
     </form>
 
-    <div v-if="chivas.length" class="mt-8 space-y-2">
-      <h4 class="font-semibold">Chivas registradas</h4>
-      <div v-for="chiva in chivas" :key="chiva.id" class="bg-gray-50 rounded-lg p-3 flex justify-between items-center">
+    <!-- Lista de chivas -->
+    <div v-if="chivas.length" class="mt-10 space-y-4">
+      <h4 class="font-semibold text-lg text-gray-800 mb-2">📋 Chivas registradas</h4>
+      <div
+        v-for="chiva in chivas"
+        :key="chiva.id"
+        class="bg-gray-50 rounded-xl p-4 border border-gray-200 shadow-sm flex justify-between items-center hover:shadow-md transition"
+      >
         <div>
-          <p class="font-bold">{{ chiva.name }} ({{ chiva.code }})</p>
-          <p class="text-sm text-gray-600">Placa: {{ chiva.plate }}</p>
-          <p class="text-sm text-gray-600">Capacidad: {{ chiva.capacity }} personas</p>
+          <p class="font-bold text-gray-800">{{ chiva.name }} ({{ chiva.code }})</p>
+          <p class="text-sm text-gray-600">🚗 Placa: {{ chiva.plate }}</p>
+          <p class="text-sm text-gray-600">👥 Capacidad: {{ chiva.capacity }} personas</p>
         </div>
         <div class="flex gap-2">
-          <button @click="editChiva(chiva)" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded">
-            Editar
+          <button
+            @click="editChiva(chiva)"
+            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
+          >
+            ✏️ Editar
           </button>
-          <button @click="deleteChiva(chiva.id)" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">
-            Eliminar
+          <button
+            @click="deleteChiva(chiva.id)"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
+          >
+            🗑️ Eliminar
           </button>
         </div>
       </div>
     </div>
-    <p v-else class="text-gray-500 mt-4">No hay chivas registradas.</p>
+    <p v-else class="text-gray-500 mt-6 italic text-center">🚫 No hay chivas registradas.</p>
   </div>
 </template>
 

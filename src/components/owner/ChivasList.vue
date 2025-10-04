@@ -1,40 +1,62 @@
 <template>
-  <div class="max-w-4xl mx-auto py-10 space-y-6">
-    <h2 class="text-2xl font-bold text-center">Chivas registradas</h2>
+  <div class="max-w-4xl mx-auto py-10 space-y-8">
+    <!-- Título -->
+    <h2 class="text-3xl font-extrabold text-center text-gray-800">
+      🚌 Chivas registradas
+    </h2>
 
     <!-- Formulario de registro -->
-    <div class="bg-white p-4 rounded-2xl shadow space-y-4">
+    <div class="bg-white p-8 rounded-2xl shadow-md border border-gray-200 space-y-6">
       <div>
-        <label class="block text-sm mb-1">Nombre</label>
-        <input v-model="nombre" class="w-full p-2 border rounded" />
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
+        <input
+          v-model="nombre"
+          class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+        />
       </div>
 
       <div>
-        <label class="block text-sm mb-1">Placa</label>
-        <input v-model="placa" class="w-full p-2 border rounded" />
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Placa</label>
+        <input
+          v-model="placa"
+          class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+        />
       </div>
 
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-2 gap-6">
         <div>
-          <label class="block text-sm mb-1">Código</label>
-          <input v-model="codigo" class="w-full p-2 border rounded" />
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Código</label>
+          <input
+            v-model="codigo"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+          />
         </div>
         <div>
-          <label class="block text-sm mb-1">Capacidad</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-1">Capacidad</label>
           <input
             v-model="capacidad"
             type="number"
-            class="w-full p-2 border rounded"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
           />
         </div>
       </div>
 
-      <button
-        @click="saveChiva"
-        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-      >
-        Guardar chiva
-      </button>
+      <!-- Botones -->
+      <div class="flex gap-3">
+        <button
+          @click="saveChiva"
+          class="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
+        >
+          {{ editingId ? "💾 Guardar cambios" : "✅ Guardar chiva" }}
+        </button>
+        <button
+          v-if="editingId"
+          @click="resetForm"
+          class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
+        >
+          ❌ Cancelar
+        </button>
+      </div>
     </div>
 
     <!-- Lista de chivas -->
@@ -42,33 +64,33 @@
       <div
         v-for="chiva in chivas"
         :key="chiva.id"
-        class="bg-white p-4 rounded-xl shadow flex justify-between items-center"
+        class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition"
       >
         <div>
-          <p class="font-semibold">{{ chiva.name }} ({{ chiva.code }})</p>
-          <p class="text-sm text-gray-600">Placa: {{ chiva.plate }}</p>
-          <p class="text-sm text-gray-600">
-            Capacidad: {{ chiva.capacity }} personas
-          </p>
+          <p class="font-bold text-gray-800">{{ chiva.name }} ({{ chiva.code }})</p>
+          <p class="text-sm text-gray-600">🚗 Placa: {{ chiva.plate }}</p>
+          <p class="text-sm text-gray-600">👥 Capacidad: {{ chiva.capacity }} personas</p>
         </div>
 
         <div class="flex gap-2">
           <button
             @click="editChiva(chiva)"
-            class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded"
+            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
           >
-            Editar
+            ✏️ Editar
           </button>
           <button
             @click="deleteChiva(chiva.id)"
-            class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
           >
-            Eliminar
+            🗑️ Eliminar
           </button>
         </div>
       </div>
     </div>
-    <p v-else class="text-gray-500 text-center">No tienes chivas registradas.</p>
+    <p v-else class="text-gray-500 text-center italic">
+      🚫 No tienes chivas registradas.
+    </p>
   </div>
 </template>
 
@@ -86,14 +108,14 @@ const capacidad = ref(40);
 const chivas = ref([]);
 const editingId = ref(null);
 
-// 🔹 Cargar solo chivas del dueño logueado
+// 🔹 Cargar solo chivas del dueño
 const fetchChivas = async () => {
   if (!auth.user) return;
 
   const { data, error } = await supabase
     .from("chivas")
     .select("id, name, plate, code, capacity, user_id")
-    .eq("user_id", auth.user.id); // 👈 solo chivas del dueño
+    .eq("user_id", auth.user.id);
 
   if (!error) {
     chivas.value = data;
@@ -102,7 +124,7 @@ const fetchChivas = async () => {
   }
 };
 
-// 🔹 Guardar o actualizar chiva
+// 🔹 Guardar o actualizar
 const saveChiva = async () => {
   if (!nombre.value || !placa.value || !codigo.value) {
     alert("Por favor completa todos los campos.");
@@ -136,7 +158,7 @@ const saveChiva = async () => {
         plate: placa.value,
         code: codigo.value,
         capacity: capacidad.value,
-        user_id: auth.user.id, // 👈 se guarda con el dueño
+        user_id: auth.user.id,
       },
     ]);
 
@@ -150,7 +172,7 @@ const saveChiva = async () => {
   fetchChivas();
 };
 
-// 🔹 Editar chiva
+// 🔹 Editar
 const editChiva = (chiva) => {
   editingId.value = chiva.id;
   nombre.value = chiva.name;
@@ -159,14 +181,14 @@ const editChiva = (chiva) => {
   capacidad.value = chiva.capacity;
 };
 
-// 🔹 Eliminar chiva
+// 🔹 Eliminar
 const deleteChiva = async (id) => {
   if (!confirm("¿Seguro que deseas eliminar esta chiva?")) return;
   await supabase.from("chivas").delete().eq("id", id).eq("user_id", auth.user.id);
   fetchChivas();
 };
 
-// 🔹 Resetear formulario
+// 🔹 Resetear
 const resetForm = () => {
   editingId.value = null;
   nombre.value = "";

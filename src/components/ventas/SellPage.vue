@@ -1,35 +1,38 @@
 <template>
-  <div class="max-w-7xl mx-auto space-y-6">
-    <h1 class="text-2xl font-bold">Venta de Tickets (Agencia)</h1>
+  <div class="max-w-7xl mx-auto space-y-8 p-6">
+    <!-- Título -->
+    <h1 class="text-3xl font-extrabold text-center text-gray-800">
+      🛒 Venta de Tickets (Agencia)
+    </h1>
 
     <!-- Lista de tours -->
     <BaseCard>
-      <h3 class="font-semibold mb-4">Selecciona un Tour</h3>
+      <h3 class="font-semibold text-lg mb-6 text-gray-800">
+        Selecciona un Tour
+      </h3>
 
-      <div v-if="loading" class="text-gray-500">Cargando tours...</div>
-      <div v-else-if="tours.length === 0" class="text-gray-500">
-        No hay tours activos.
+      <div v-if="loading" class="text-gray-500 italic">⏳ Cargando tours...</div>
+      <div v-else-if="tours.length === 0" class="text-gray-500 text-center py-6">
+        🚫 No hay tours activos.
       </div>
 
-      <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <BaseCard
           v-for="tour in tours"
           :key="tour.id"
-          class="cursor-pointer hover:shadow-lg transition"
+          class="cursor-pointer hover:shadow-lg border hover:border-blue-300 transition-all duration-200 rounded-2xl"
           @click="selectTour(tour)"
         >
-          <h4 class="font-bold">{{ tour.name }}</h4>
-          <p class="text-sm text-gray-600">Chiva: {{ tour.chiva }}</p>
-          <p class="text-sm text-gray-600">
-            Hora salida: {{ formatHour(tour.departure_time) }}
-          </p>
-          <p class="text-sm text-gray-600">Precio: ${{ tour.base_price }}</p>
-          <p class="text-xs mt-1">
+          <h4 class="font-bold text-xl text-gray-800 mb-1">{{ tour.name }}</h4>
+          <p class="text-sm text-gray-600">🚌 Chiva: <span class="font-medium">{{ tour.chiva }}</span></p>
+          <p class="text-sm text-gray-600">⏰ Hora salida: <span class="font-medium">{{ formatHour(tour.departure_time) }}</span></p>
+          <p class="text-sm text-gray-600">💵 Precio: <span class="font-semibold text-green-600">${{ tour.base_price }}</span></p>
+          <p class="text-xs mt-2">
             Estado:
             <span
               :class="{
-                'text-yellow-600': tour.status === 'pendiente',
-                'text-green-600': tour.status === 'en_curso'
+                'text-yellow-600 font-medium': tour.status === 'pendiente',
+                'text-green-600 font-semibold': tour.status === 'en_curso'
               }"
             >
               {{ tour.status }}
@@ -41,7 +44,7 @@
 
     <!-- Selección de asientos -->
     <BaseCard v-if="selectedTour && !checkoutMode">
-      <h3 class="font-semibold mb-4">Selecciona tus Asientos</h3>
+      <h3 class="font-semibold text-lg mb-6 text-gray-800">Selecciona tus Asientos</h3>
       <SeatGrid
         :assignedChivaId="selectedTour.id"
         ref="seatGridRef"
@@ -68,6 +71,7 @@
     />
   </div>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted } from "vue";

@@ -1,42 +1,71 @@
 <template>
-  <BaseCard class="max-w-2xl mx-auto">
-    <h2 class="text-xl font-bold mb-4">Finalizar compra</h2>
+  <BaseCard class="max-w-2xl mx-auto p-6">
+    <!-- Título -->
+    <h2 class="text-2xl font-extrabold mb-6 text-gray-800 text-center">
+      🧾 Finalizar compra
+    </h2>
 
     <!-- Formulario inicial -->
-    <form class="space-y-4" @submit.prevent="confirmPurchase" v-if="!qrVisible">
-      <BaseInput v-model="customerName" name="name" placeholder="Nombre del cliente" required />
-      <BaseInput v-model="customerEmail" type="email" name="email" placeholder="Correo del cliente" required />
+    <form
+      class="space-y-6"
+      @submit.prevent="confirmPurchase"
+      v-if="!qrVisible"
+    >
+      <!-- Inputs -->
+      <BaseInput
+        v-model="customerName"
+        name="name"
+        placeholder="Nombre del cliente"
+        required
+      />
+      <BaseInput
+        v-model="customerEmail"
+        type="email"
+        name="email"
+        placeholder="Correo del cliente"
+        required
+      />
 
-      <div class="text-sm text-gray-600 space-y-1">
-        <p><strong>Tour:</strong> {{ selectedTour?.name }}</p>
-        <p><strong>Chiva:</strong> {{ selectedTour?.chiva }}</p>
-        <p><strong>Hora salida:</strong> {{ formatHour(selectedTour?.departure_time) }}</p>
-        <p><strong>Total:</strong> ${{ total }}</p>
+      <!-- Info del Tour -->
+      <div class="text-sm text-gray-700 space-y-1 bg-gray-50 p-4 rounded-lg border">
+        <p><strong>🎟️ Tour:</strong> {{ selectedTour?.name }}</p>
+        <p><strong>🚌 Chiva:</strong> {{ selectedTour?.chiva }}</p>
+        <p><strong>⏰ Hora salida:</strong> {{ formatHour(selectedTour?.departure_time) }}</p>
+        <p class="font-bold text-green-700"><strong>💵 Total:</strong> ${{ total }}</p>
       </div>
 
+      <!-- Asientos -->
       <div class="pt-2">
-        <h4 class="font-semibold mb-2">Asientos seleccionados:</h4>
-        <div class="flex flex-wrap gap-2">
+        <h4 class="font-semibold mb-3 text-gray-800">🪑 Asientos seleccionados:</h4>
+        <div class="flex flex-wrap gap-3">
           <div
             v-for="seat in selectedSeats"
             :key="seat"
-            class="w-10 h-10 flex items-center justify-center rounded bg-green-600 text-white text-sm font-bold"
+            class="w-12 h-12 flex items-center justify-center rounded-full bg-green-600 text-white text-sm font-bold shadow hover:bg-green-700 transition"
           >
             {{ seat }}
           </div>
         </div>
       </div>
 
-      <BaseButton full type="submit">
-        Confirmar y Generar QR
+      <!-- Botón confirmar -->
+      <BaseButton full type="submit" class="mt-6">
+        ✅ Confirmar y Generar QR
       </BaseButton>
     </form>
 
     <!-- Vista QR -->
-    <div v-if="qrVisible" class="text-center space-y-4">
-      <p class="font-semibold">Escanea o toma captura de tu ticket</p>
-      <img :src="qrCodeUrl" alt="QR Ticket" class="mx-auto w-48 h-48" />
-      <p class="text-sm text-gray-500">Este QR desaparecerá en {{ countdown }} segundos</p>
+    <div v-if="qrVisible" class="text-center space-y-6">
+      <h3 class="text-lg font-semibold text-gray-800">🎫 Ticket generado</h3>
+      <p class="text-gray-600">Escanea o guarda tu código QR</p>
+      <img
+        :src="qrCodeUrl"
+        alt="QR Ticket"
+        class="mx-auto w-56 h-56 rounded-lg shadow-md border"
+      />
+      <p class="text-sm text-gray-500">
+        ⏳ Este QR desaparecerá en <span class="font-semibold">{{ countdown }}</span> segundos
+      </p>
     </div>
   </BaseCard>
 </template>
@@ -111,14 +140,13 @@ const confirmPurchase = async () => {
 
 // 🔹 Enviar email con EmailJS (siempre al admin, opcional al cliente)
 const sendEmail = () => {
-  // Si el cliente dejó vacío, usamos solo el admin
   const destinatario = customerEmail.value
     ? customerEmail.value
     : "chivaspass@gmail.com";
 
   const templateParams = {
     cliente: customerName.value,
-    correo: destinatario, // 👈 coincide con {{correo}} en plantilla
+    correo: destinatario,
     tour: props.selectedTour.name,
     chiva: props.selectedTour.chiva,
     fecha: formatHour(props.selectedTour.departure_time),
@@ -132,7 +160,7 @@ const sendEmail = () => {
       "service_384ghjp",   // 👈 tu Service ID
       "template_ax9ioca",  // 👈 tu Template ID
       templateParams,
-      "3vYtcZkms5NAqUjGI"    // 👈 tu Public Key
+      "3vYtcZkms5NAqUjGI"  // 👈 tu Public Key
     )
     .then(
       (response) => {

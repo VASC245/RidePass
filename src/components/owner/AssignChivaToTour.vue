@@ -1,105 +1,138 @@
 <template>
-  <div class="max-w-4xl mx-auto py-10 space-y-6">
-    <h2 class="text-2xl font-bold text-center">Asignar Chiva a Tour</h2>
+  <div class="max-w-6xl mx-auto py-10 px-6 space-y-10">
+    <!-- Título -->
+    <h2 class="text-3xl font-extrabold text-center text-gray-800">
+      🚍 Gestión de Salidas
+    </h2>
 
     <!-- Formulario -->
-    <div
-      class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end bg-white p-4 rounded-2xl shadow"
+    <form
+      @submit.prevent="saveSalida"
+      class="bg-white p-8 rounded-2xl shadow-md border border-gray-200 space-y-6"
     >
-      <div>
-        <label class="block text-sm mb-1">Tour</label>
-        <select v-model="selectedTour" class="w-full p-2 border rounded">
-          <option disabled value="">Selecciona un tour</option>
-          <option v-for="tour in tours" :key="tour.id" :value="tour.id">
-            {{ tour.title }}
-          </option>
-        </select>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Tours -->
+        <div>
+          <label class="block font-semibold text-gray-700 mb-2">Tour</label>
+          <select
+            v-model="selectedTour"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+          >
+            <option disabled value="">Seleccione un tour</option>
+            <option v-for="tour in tours" :key="tour.id" :value="tour.id">
+              {{ tour.title }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Chivas -->
+        <div>
+          <label class="block font-semibold text-gray-700 mb-2">Chiva</label>
+          <select
+            v-model="selectedChiva"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
+          >
+            <option disabled value="">Seleccione una chiva</option>
+            <option v-for="chiva in chivas" :key="chiva.id" :value="chiva.id">
+              {{ chiva.name }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Hora salida -->
+        <div>
+          <label class="block font-semibold text-gray-700 mb-2">Hora de salida</label>
+          <input
+            type="time"
+            v-model="departureTime"
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          />
+        </div>
       </div>
 
-      <div>
-        <label class="block text-sm mb-1">Chiva</label>
-        <select v-model="selectedChiva" class="w-full p-2 border rounded">
-          <option disabled value="">Selecciona una chiva</option>
-          <option v-for="chiva in chivas" :key="chiva.id" :value="chiva.id">
-            {{ chiva.name }}
-          </option>
-        </select>
-      </div>
-
-      <div>
-        <label class="block text-sm mb-1">Hora de salida</label>
-        <input
-          type="time"
-          v-model="departureTime"
-          class="w-full p-2 border rounded"
-        />
-      </div>
-
-      <div class="md:col-span-3">
+      <!-- Botones -->
+      <div class="flex gap-4 justify-center">
         <button
-          @click="saveSalida"
-          class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+          type="submit"
+          class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
         >
-          {{ editingId ? "Guardar cambios" : "Asignar" }}
+          {{ editingId ? "💾 Guardar cambios" : "✅ Asignar salida" }}
         </button>
+
         <button
           v-if="editingId"
+          type="button"
           @click="cancelEdit"
-          class="bg-gray-400 text-white px-4 py-2 rounded ml-2"
+          class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
         >
-          Cancelar
+          ❌ Cancelar
         </button>
+      </div>
+    </form>
+
+    <!-- Lista de salidas -->
+    <div v-if="salidas.length > 0" class="space-y-4">
+      <h3 class="text-xl font-bold text-gray-800">📋 Salidas programadas</h3>
+      <div class="overflow-hidden border border-gray-200 rounded-2xl shadow-sm">
+        <table class="w-full text-left">
+          <thead class="bg-gray-100 text-sm uppercase tracking-wide text-gray-600">
+            <tr>
+              <th class="px-6 py-3">Tour</th>
+              <th class="px-6 py-3">Chiva</th>
+              <th class="px-6 py-3">Salida</th>
+              <th class="px-6 py-3">Estado</th>
+              <th class="px-6 py-3 text-center">Acciones</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr
+              v-for="salida in salidas"
+              :key="salida.id"
+              class="hover:bg-gray-50 transition"
+            >
+              <td class="px-6 py-3 font-medium text-gray-700">
+                {{ salida.tours?.title }}
+              </td>
+              <td class="px-6 py-3 text-gray-600">
+                {{ salida.chivas?.name }}
+              </td>
+              <td class="px-6 py-3 text-gray-600">
+                {{ new Date(salida.departure_at).toLocaleString() }}
+              </td>
+              <td class="px-6 py-3">
+                <span
+                  :class="{
+                    'text-yellow-600 font-medium': salida.status === 'pendiente',
+                    'text-green-600 font-semibold': salida.status === 'en_curso',
+                    'text-gray-500 italic': salida.status === 'finalizado'
+                  }"
+                >
+                  {{ salida.status }}
+                </span>
+              </td>
+              <td class="px-6 py-3 flex gap-3 justify-center">
+                <button
+                  @click="editSalida(salida)"
+                  class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
+                >
+                  ✏️ Editar
+                </button>
+                <button
+                  @click="deleteSalida(salida.id)"
+                  class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
+                >
+                  🗑️ Eliminar
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- Tabla -->
-    <div v-if="salidas.length" class="mt-10">
-      <h3 class="text-lg font-semibold mb-2">Salidas Programadas</h3>
-      <table class="w-full bg-white rounded-xl overflow-hidden">
-        <thead class="bg-gray-100 text-left text-sm">
-          <tr>
-            <th class="p-2">Tour</th>
-            <th class="p-2">Chiva</th>
-            <th class="p-2">Hora de salida</th>
-            <th class="p-2 text-center">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr
-            v-for="salida in salidas"
-            :key="salida.id"
-            class="border-t text-sm"
-          >
-            <td class="p-2">{{ salida.tours?.title || "Sin tour" }}</td>
-            <td class="p-2">{{ salida.chivas?.name || "Sin chiva" }}</td>
-            <td class="p-2">
-              {{
-                salida.departure_at
-                  ? new Date(salida.departure_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
-                  : "-"
-              }}
-            </td>
-            <td class="p-2 text-center flex gap-2 justify-center">
-              <button
-                @click="editSalida(salida)"
-                class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded"
-              >
-                Editar
-              </button>
-              <button
-                @click="deleteSalida(salida.id)"
-                class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded"
-              >
-                Eliminar
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <p v-else class="text-gray-500 text-center italic">
+      🚫 No hay salidas programadas.
+    </p>
   </div>
 </template>
 
@@ -157,7 +190,6 @@ const fetchSalidas = async () => {
     .order("departure_at", { ascending: true });
 
   if (!error) {
-    // ✅ Mostrar solo asignaciones activas (evitar tours borrados o finalizados)
     salidas.value = (data || []).filter(
       (s) => s.tours !== null && s.chivas !== null
     );
@@ -183,7 +215,7 @@ const saveSalida = async () => {
         tour_id: selectedTour.value,
         chiva_id: selectedChiva.value,
         departure_at: departureTimestamp.toISOString(),
-        status: "pendiente", // 👈 por defecto cuando se edita
+        status: "pendiente",
       })
       .eq("id", editingId.value);
   } else {
@@ -193,7 +225,7 @@ const saveSalida = async () => {
         chiva_id: selectedChiva.value,
         departure_at: departureTimestamp.toISOString(),
         user_id: auth.user.id,
-        status: "pendiente", // 👈 nuevo campo para controlar estados
+        status: "pendiente",
       },
     ]);
     if (error) {
@@ -216,7 +248,7 @@ const editSalida = (salida) => {
     : "";
 };
 
-// 🔹 Eliminar salida manualmente (dueño)
+// 🔹 Eliminar salida
 const deleteSalida = async (id) => {
   if (!confirm("¿Seguro que deseas eliminar esta salida?")) return;
   await supabase.from("assigned_chivas").delete().eq("id", id);
@@ -237,5 +269,3 @@ onMounted(() => {
   fetchSalidas();
 });
 </script>
-
-
