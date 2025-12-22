@@ -33,28 +33,84 @@
           <h2 class="font-bold text-xl text-gray-800 mb-1">
             {{ tour.title }}
           </h2>
+
           <p class="text-sm text-gray-600 mb-2">
             {{ tour.description || "Sin descripción disponible" }}
           </p>
+
           <p class="text-sm text-gray-500">
-            🕒 Duración: {{ tour.duration ? tour.duration + ' min' : 'No especificada' }}
+            🕒 Duración:
+            {{ tour.duration ? tour.duration + ' min' : 'No especificada' }}
           </p>
         </div>
 
-        <!-- Precio -->
+        <!-- Precio + botón -->
         <div
           class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3"
         >
           <p class="text-green-600 font-semibold text-lg">
             💵 ${{ tour.base_price.toFixed(2) }}
           </p>
+
           <button
             class="text-sm text-blue-600 hover:underline font-semibold"
+            @click="showDetails(tour)"
           >
             Ver detalles
           </button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- =======================
+       MODAL DE DETALLES
+       ======================= -->
+  <div
+    v-if="selectedTour"
+    class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+  >
+    <div class="bg-white w-full max-w-lg p-6 rounded-2xl shadow-xl relative">
+
+      <!-- Botón cerrar -->
+      <button
+        @click="closeDetails"
+        class="absolute top-3 right-3 text-gray-600 hover:text-black"
+      >
+        ✖
+      </button>
+
+      <!-- Título -->
+      <h2 class="text-2xl font-bold text-gray-800 mb-4">
+        {{ selectedTour.title }}
+      </h2>
+
+      <!-- Descripción -->
+      <p class="text-gray-600 mb-2">
+        {{ selectedTour.description || "Sin descripción disponible" }}
+      </p>
+
+      <!-- Duración -->
+      <p class="text-gray-600 mb-2">
+        🕒 Duración:
+        {{ selectedTour.duration ? selectedTour.duration + " min" : "No especificada" }}
+      </p>
+
+      <!-- Precio -->
+      <p class="text-green-600 font-bold text-xl mb-4">
+        💵 Precio: ${{ selectedTour.base_price.toFixed(2) }}
+      </p>
+
+      <!-- Botón cerrar -->
+      <div class="mt-5 flex justify-end">
+        <button
+          @click="closeDetails"
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700"
+        >
+          Cerrar
+        </button>
+      </div>
+
     </div>
   </div>
 </template>
@@ -65,9 +121,22 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
 
 const auth = useAuthStore();
+
 const tours = ref([]);
 const loading = ref(true);
 
+// Estado del modal
+const selectedTour = ref(null);
+
+const showDetails = (tour) => {
+  selectedTour.value = tour;
+};
+
+const closeDetails = () => {
+  selectedTour.value = null;
+};
+
+// Traer tours
 const fetchTours = async () => {
   try {
     if (!auth.user) return;
@@ -78,6 +147,7 @@ const fetchTours = async () => {
       .eq("user_id", auth.user.id);
 
     if (error) throw error;
+
     tours.value = data || [];
   } catch (err) {
     console.error("Error cargando tours:", err);

@@ -1,6 +1,5 @@
 <template>
   <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 max-w-4xl mx-auto space-y-8">
-    <!-- Título -->
     <h3 class="text-3xl font-extrabold text-center text-gray-800">
       {{ editing ? "✏️ Editar Tour" : "🎯 Crear Nuevo Tour" }}
     </h3>
@@ -28,14 +27,14 @@
 
       <div class="grid md:grid-cols-2 gap-6">
         <div>
-          <label class="block mb-2 text-sm font-semibold text-gray-700">Precio base (USD)</label>
+          <label class="block mb-2 text-sm font-semibold text-gray-700">💰 Precio base (USD)</label>
           <input
             v-model.number="form.base_price"
             type="number"
-            step="0.01"
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-            required
+            disabled
+            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-gray-100 text-gray-600 cursor-not-allowed"
           />
+          <p class="text-xs text-gray-500 mt-1">El precio base es fijo: $2</p>
         </div>
 
         <div>
@@ -50,7 +49,6 @@
         </div>
       </div>
 
-      <!-- Botones -->
       <div class="flex gap-3 justify-center">
         <button
           type="submit"
@@ -113,7 +111,7 @@ import { useAuthStore } from "@/stores/authStore";
 
 const auth = useAuthStore();
 
-const form = ref({ title: "", description: "", base_price: 0, duration: 60 });
+const form = ref({ title: "", description: "", base_price: 2, duration: 60 });
 const tours = ref([]);
 const editing = ref(false);
 const editingId = ref(null);
@@ -129,23 +127,25 @@ const fetchTours = async () => {
   if (!error) tours.value = data;
 };
 
-// 🔹 Guardar o editar tour
+// 🔹 Guardar o editar tour (precio fijo $2)
 const saveTour = async () => {
   if (!auth.user) {
     alert("⚠️ Debes iniciar sesión antes de crear tours.");
     return;
   }
 
+  form.value.base_price = 2;
+
   if (editing.value) {
     await supabase
       .from("tours")
-      .update({ ...form.value })
+      .update({ ...form.value, base_price: 2 })
       .eq("id", editingId.value)
       .eq("user_id", auth.user.id);
   } else {
     await supabase
       .from("tours")
-      .insert([{ ...form.value, user_id: auth.user.id }]);
+      .insert([{ ...form.value, user_id: auth.user.id, base_price: 2 }]);
   }
 
   cancelEdit();
@@ -156,7 +156,7 @@ const saveTour = async () => {
 const editTour = (tour) => {
   editing.value = true;
   editingId.value = tour.id;
-  form.value = { ...tour };
+  form.value = { ...tour, base_price: 2 };
 };
 
 // 🔹 Eliminar
@@ -174,7 +174,7 @@ const deleteTour = async (id) => {
 const cancelEdit = () => {
   editing.value = false;
   editingId.value = null;
-  form.value = { title: "", description: "", base_price: 0, duration: 60 };
+  form.value = { title: "", description: "", base_price: 2, duration: 60 };
 };
 
 onMounted(fetchTours);

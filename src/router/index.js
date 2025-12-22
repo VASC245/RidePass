@@ -1,4 +1,3 @@
-// src/router/index.js
 import { createRouter, createWebHistory } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 
@@ -17,7 +16,8 @@ import TourForm from "@/components/owner/TourForm.vue";
 import AssignChivaToTour from "@/components/owner/AssignChivaToTour.vue";
 import ScanBoarding from "@/components/owner/ScanBoarding.vue";
 import SellPageOwner from "@/components/ventas/SellPageOwner.vue";
-import ToursList  from "@/components/ToursList.vue";
+import ToursList from "@/components/ToursList.vue";
+import OwnerPayments from "@/components/owner/OwnerPayments.vue"; // 👈 nuevo
 
 // Páginas de agencia
 import SellPage from "@/components/ventas/SellPage.vue";
@@ -27,16 +27,11 @@ import AvailableTours from "@/components/ventas/AvailableTours.vue";
 import ConductorTours from "@/components/conductorTours.vue";
 
 const routes = [
-  {
-    path: "/login",
-    name: "Login",
-    component: Login,
-  },
-  {
-    path: "/register",
-    name: "Register",
-    component: Register,
-  },
+  // Auth
+  { path: "/login", name: "Login", component: Login },
+  { path: "/register", name: "Register", component: Register },
+
+  // App principal con sidebar
   {
     path: "/",
     component: SidebarLayout,
@@ -49,7 +44,8 @@ const routes = [
       { path: "/asignar", name: "AsignarChivaToTour", component: AssignChivaToTour },
       { path: "/embarque", name: "Embarque", component: ScanBoarding },
       { path: "/mis-ventas", name: "MisVentas", component: SellPageOwner },
-      {path: "/tours", name:"Tours", component: ToursList},
+      { path: "/tours", name: "Tours", component: ToursList },
+      { path: "/pagos", name: "OwnerPayments", component: OwnerPayments }, // 💰 nuevo módulo de comprobantes
 
       // 🏢 Agencia
       { path: "/vender-boletos", name: "SellPage", component: SellPage },
@@ -57,7 +53,7 @@ const routes = [
 
       // 🚌 Conductor
       { path: "/mis-tours", name: "ConductorTours", component: ConductorTours },
-      { path: "/escanear", name: "ConductorScan", component: ScanBoarding }, // 🔹 nuevo
+      { path: "/escanear", name: "ConductorScan", component: ScanBoarding },
     ],
   },
 ];
@@ -67,7 +63,7 @@ const router = createRouter({
   routes,
 });
 
-// 🔒 Navigation Guard
+// 🔒 Protección de rutas
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 

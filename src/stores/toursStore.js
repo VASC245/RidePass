@@ -1,53 +1,63 @@
 // src/stores/toursStore.js
-import { defineStore } from 'pinia';
-import { supabase } from '@/lib/supabase';
+import { defineStore } from "pinia";
+import { supabase } from "@/lib/supabase";
 
-export const useToursStore = defineStore('tours', {
+export const useToursStore = defineStore("tours", {
   state: () => ({
     tours: [],
-    runs: [],
     loading: false,
+    error: null
   }),
 
   actions: {
     async fetchTours() {
       this.loading = true;
-      const { data, error } = await supabase
-        .from('tours')
-        .select('*')
-        .order('created_at', { ascending: false });
-      this.loading = false;
-      if (error) throw error;
-      this.tours = data || [];
-    },
+      this.error = null;
 
-    async createTour({ title, description, base_price }) {
-      const { data, error } = await supabase
-        .from('tours')
-        .insert([{ title, description, base_price }])
-        .select()
-        .single();
-      if (error) throw error;
-      this.tours.unshift(data);
-    },
+      try {
+        // 🟦 Obtener tours programados: assigned_chivas + join con tours + chivas
+        const { data, error } = await supabase
+          .from("assigned_chivas")
+          .select(`
+            id,
+            status,
+            departure_at,
+            tours (
+              title,
+              base_price,
+              duration
+            ),
+            chivas (
+              name,
+              plate
+            )
+          `)
+          .order("departure_at", { ascending: true });
 
-    async fetchRuns() {
-      const { data, error } = await supabase
-        .from('tour_runs')
-        .select('*, tours(*), chivas(*)')
-        .order('departure_at', { ascending: true });
-      if (error) throw error;
-      this.runs = data || [];
-    },
+        if (error) throw error;
 
-    async createRun({ tour_id, chiva_id, departure_at }) {
-      const { data, error } = await supabase
-        .from('tour_runs')
-        .insert([{ tour_id, chiva_id, departure_at }])
-        .select('*, tours(*), chivas(*)')
-        .single();
-      if (error) throw error;
-      this.runs.push(data);
+        // 🟨 Mismo mapeo EXACTO que tu backend original
+        this.tours = data.map((item) => ({
+          id: item.id,
+          title: item.tours?.title,
+          base_price: item.tours?.base_price,
+          duration: item.tours?.duration,
+          chiva_name: item.chivas?.name,
+          plate: item.chivas?.plate,
+          status: item.status,
+          departure_at: item.departure_at,
+          formattedHour: new Date(item.departure_at).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit"
+          })
+        }));
+
+      } catch (err) {
+        console.error("❌ Error cargando tours:", err);
+        this.error = "Error cargando tours.";
+      } finally {
+        this.loading = false;
+      }
     }
   }
 });

@@ -1,32 +1,44 @@
 <template>
   <div class="max-w-7xl mx-auto space-y-8 p-6">
-    <!-- Título -->
     <h1 class="text-3xl font-extrabold text-center text-gray-800">
       🛒 Venta de Tickets (Agencia)
     </h1>
 
     <!-- Lista de tours -->
     <BaseCard>
-      <h3 class="font-semibold text-lg mb-6 text-gray-800">
-        Selecciona un Tour
-      </h3>
+      <h3 class="font-semibold text-lg mb-6 text-gray-800">Selecciona un Tour</h3>
 
-      <div v-if="loading" class="text-gray-500 italic">⏳ Cargando tours...</div>
-      <div v-else-if="tours.length === 0" class="text-gray-500 text-center py-6">
+      <div v-if="toursStore.loading" class="text-gray-500 italic">
+        ⏳ Cargando tours...
+      </div>
+
+      <div v-else-if="displayTours.length === 0" class="text-gray-500 text-center py-6">
         🚫 No hay tours activos.
       </div>
 
       <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         <BaseCard
-          v-for="tour in tours"
+          v-for="tour in displayTours"
           :key="tour.id"
           class="cursor-pointer hover:shadow-lg border hover:border-blue-300 transition-all duration-200 rounded-2xl"
           @click="selectTour(tour)"
         >
           <h4 class="font-bold text-xl text-gray-800 mb-1">{{ tour.name }}</h4>
-          <p class="text-sm text-gray-600">🚌 Chiva: <span class="font-medium">{{ tour.chiva }}</span></p>
-          <p class="text-sm text-gray-600">⏰ Hora salida: <span class="font-medium">{{ formatHour(tour.departure_time) }}</span></p>
-          <p class="text-sm text-gray-600">💵 Precio: <span class="font-semibold text-green-600">${{ tour.base_price }}</span></p>
+
+          <p class="text-sm text-gray-600">
+            🚌 Chiva: <span class="font-medium">{{ tour.chiva }}</span>
+          </p>
+
+          <p class="text-sm text-gray-600">
+            ⏰ Hora salida:
+            <span class="font-medium">{{ formatHour(tour.departure_time) }}</span>
+          </p>
+
+          <p class="text-sm text-gray-600">
+            💵 Precio:
+            <span class="font-semibold text-green-600">${{ tour.base_price }}</span>
+          </p>
+
           <p class="text-xs mt-2">
             Estado:
             <span
@@ -44,7 +56,10 @@
 
     <!-- Selección de asientos -->
     <BaseCard v-if="selectedTour && !checkoutMode">
-      <h3 class="font-semibold text-lg mb-6 text-gray-800">Selecciona tus Asientos</h3>
+      <h3 class="font-semibold text-lg mb-6 text-gray-800">
+        Selecciona tus Asientos
+      </h3>
+
       <SeatGrid
         :assignedChivaId="selectedTour.id"
         ref="seatGridRef"
@@ -72,68 +87,39 @@
   </div>
 </template>
 
-
 <script setup>
 import { ref, computed, onMounted } from "vue";
-import { supabase } from "@/lib/supabase";
-import { useRoute } from "vue-router";
-
+import { useToursStore } from "@/stores/toursStore";
 import SeatGrid from "@/components/asientos/SeatGrid.vue";
 import CartModal from "@/components/CartModal.vue";
 import Checkout from "@/components/Checkout.vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
 
-const tours = ref([]);
+const toursStore = useToursStore();
+
 const selectedTour = ref(null);
 const selectedSeats = ref([]);
-const loading = ref(true);
 const checkoutMode = ref(false);
 const seatGridRef = ref(null);
 
-const route = useRoute();
+// Cargar tours al inicio
+onMounted(() => {
+  toursStore.fetchTours();
+});
 
-const loadTours = async () => {
-  try {
-    const { data, error } = await supabase
-      .from("assigned_chivas")
-      .select(`
-        id,
-        departure_at,
-        status,
-        tours ( id, title, base_price ),
-        chivas ( id, name )
-      `)
-      .in("status", ["pendiente", "en_curso"]); // 🔹 solo mostrar activos
+// 🔹 Convertimos el resultado del store a la estructura que SellPage espera
+const displayTours = computed(() =>
+  toursStore.tours.map((item) => ({
+    id: item.id,
+    name: item.title,             // ← antes item.tours.title
+    base_price: item.base_price,  // ← antes item.tours.base_price
+    chiva: item.chiva_name,       // ← antes item.chivas.name
+    status: item.status,
+    departure_time: item.departure_at,
+  }))
+);
 
-    if (error) throw error;
-
-    tours.value = (data || [])
-      .filter((item) => item.tours?.title && item.tours?.base_price > 0)
-      .map((item) => ({
-        id: item.id,
-        departure_time: item.departure_at,
-        name: item.tours?.title,
-        base_price: item.tours?.base_price,
-        chiva: item.chivas?.name || "Sin chiva asignada",
-        status: item.status,
-      }));
-
-    if (route.query.assignedId) {
-      const found = tours.value.find(
-        (t) => String(t.id) === String(route.query.assignedId)
-      );
-      if (found) selectTour(found);
-    }
-  } catch (err) {
-    console.error("Error cargando tours:", err);
-    tours.value = [];
-  } finally {
-    loading.value = false;
-  }
-};
-
-onMounted(loadTours);
-
+// Formatear hora
 const formatHour = (dateTime) => {
   if (!dateTime) return "Sin hora";
   return new Date(dateTime).toLocaleString([], {
@@ -161,7 +147,7 @@ const resetForm = () => {
   selectedTour.value = null;
   selectedSeats.value = [];
   checkoutMode.value = false;
-  loadTours();
+  toursStore.fetchTours();
   if (seatGridRef.value) seatGridRef.value.refreshSeats();
 };
 </script>

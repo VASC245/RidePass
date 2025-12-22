@@ -102,29 +102,48 @@ const tick = async () => {
   animationFrameId = requestAnimationFrame(tick);
 };
 
-// 🔹 Procesar QR
+// 🔹 Procesar QR (ÚNICA PARTE NUEVA)
 const handleScan = async (qrText) => {
   try {
-    const seatsMatch = qrText.match(/Asientos: ([\d, ]+)/);
-    if (!seatsMatch) {
+    console.log("📸 QR RAW:", qrText);
+
+    // 1️⃣ normalizar texto
+    const cleaned = decodeURIComponent(qrText).trim();
+    console.log("🧹 QR CLEAN:", cleaned);
+
+    // 2️⃣ parsear
+    const payload = JSON.parse(cleaned);
+    console.log("📦 QR PAYLOAD:", payload);
+
+    if (
+      !payload.assigned_chiva_id ||
+      !Array.isArray(payload.seats)
+    ) {
       scanResult.value = "⚠️ QR inválido.";
       return;
     }
 
-    const seats = seatsMatch[1].split(",").map((s) => s.trim());
-
-    await supabase
+    // 3️⃣ actualizar asientos
+    const { error } = await supabase
       .from("seats")
       .update({ status: "abordado" })
-      .in("seat_number", seats);
+      .eq("assigned_chiva_id", payload.assigned_chiva_id)
+      .in("seat_number", payload.seats);
 
-    scanResult.value = `✅ Pasajeros ${seats.join(", ")} abordados con éxito.`;
+    if (error) {
+      console.error("❌ Error actualizando asientos:", error);
+      scanResult.value = "❌ Error abordando asientos.";
+      return;
+    }
+
+    scanResult.value = `✅ Pasajeros ${payload.seats.join(", ")} abordados con éxito.`;
     await playBeep();
   } catch (err) {
-    console.error("Error procesando QR:", err);
-    scanResult.value = "❌ Error procesando el QR.";
+    console.error("❌ ERROR QR:", err);
+    scanResult.value = "⚠️ QR inválido.";
   }
 };
+
 
 // 🔹 Sonido
 const playBeep = async () => {

@@ -61,7 +61,7 @@
       </div>
     </aside>
 
-    <!-- Sidebar móvil (responsive) -->
+    <!-- Sidebar móvil -->
     <transition name="slide">
       <aside
         v-if="mobileOpen"
@@ -136,6 +136,7 @@
             ? '🚌 Panel Conductor'
             : '🏢 Panel Agencia' }}
         </h1>
+
         <!-- Botón menú móvil -->
         <button
           @click="mobileOpen = true"
@@ -172,6 +173,7 @@ const menuItems = computed(() => {
       { label: "Tours", path: "/tours" },
       { label: "Gestión de Tours", path: "/nuevo-tour" },
       { label: "Asignar Salidas", path: "/asignar" },
+      { label: "Comprobantes de Pago", path: "/pagos" }, // 💰 nuevo acceso
       { label: "Embarque (Escanear)", path: "/embarque" },
       { label: "Mis Ventas", path: "/mis-ventas" },
     ];
@@ -196,7 +198,6 @@ const logout = async () => {
 </script>
 
 <style scoped>
-/* Animación del slide del sidebar móvil */
 .slide-enter-active,
 .slide-leave-active {
   transition: all 0.3s ease;

@@ -72,68 +72,102 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/stores/authStore";
+  import { ref, onMounted } from "vue";
+  import { supabase } from "@/lib/supabase";
+  import { useAuthStore } from "@/stores/authStore";
 
-const auth = useAuthStore();
-const tours = ref([]);
-const loading = ref(true);
+  const auth = useAuthStore();
+  const tours = ref([]);
+  const loading = ref(true);
 
-const fetchTours = async () => {
-  loading.value = true;
-  if (!auth.user) return;
+  // ⏱️ NUEVO: tiempo de gracia (NO afecta nada previo)
+  const GRACE_MINUTES = 15;
 
-  // 1️⃣ Buscar TODAS las chivas asignadas al conductor
-  const { data: driverRows, error: driverError } = await supabase
-    .from("drivers")
-    .select("chiva_id")
-    .eq("user_id", auth.user.id);
+  // ================= FETCH TOURS (IGUAL + FILTRO EXTRA) =================
+  const fetchTours = async () => {
+    loading.value = true;
+    if (!auth.user) return;
 
-  if (driverError) {
-    console.error("Error buscando conductor:", driverError);
-    tours.value = [];
+    // 1️⃣ EXACTAMENTE IGUAL: chivas del conductor
+    const { data: driverRows, error: driverError } = await supabase
+      .from("drivers")
+      .select("chiva_id")
+      .eq("user_id", auth.user.id);
+
+    if (driverError) {
+      console.error("Error buscando conductor:", driverError);
+      tours.value = [];
+      loading.value = false;
+      return;
+    }
+
+    if (!driverRows || driverRows.length === 0) {
+      tours.value = [];
+      loading.value = false;
+      return;
+    }
+
+    const chivaIds = driverRows.map(d => d.chiva_id);
+
+    // 2️⃣ EXACTAMENTE IGUAL: tours asignados
+    const { data, error } = await supabase
+      .from("assigned_chivas")
+      .select(`
+        id,
+        departure_at,
+        status,
+        finished_at,
+        tours(title),
+        chivas(name)
+      `)
+      .in("chiva_id", chivaIds)
+      .order("departure_at", { ascending: true });
+
+    if (error) {
+      console.error("Error cargando tours:", error);
+      tours.value = [];
+      loading.value = false;
+      return;
+    }
+
+    // 3️⃣ NUEVO (NO INVASIVO):
+    //    ocultar SOLO los finalizados hace más de 15 minutos
+    const now = new Date();
+
+    tours.value = (data || []).filter(tour => {
+      if (tour.status !== "finalizado") return true;
+      if (!tour.finished_at) return true;
+
+      const finishedAt = new Date(tour.finished_at);
+      const diffMinutes = (now - finishedAt) / 1000 / 60;
+
+      return diffMinutes <= GRACE_MINUTES;
+    });
+
     loading.value = false;
-    return;
-  }
+  };
 
-  if (!driverRows || driverRows.length === 0) {
-    tours.value = [];
-    loading.value = false;
-    return;
-  }
+  // ================= UPDATE STATUS (IGUAL + CAMPO EXTRA) =================
+  const updateStatus = async (id, newStatus) => {
+    // 🔹 ANTES: solo status
+    // 🔹 AHORA: status + finished_at (solo al finalizar)
+    const payload =
+      newStatus === "finalizado"
+        ? { status: newStatus, finished_at: new Date().toISOString() }
+        : { status: newStatus };
 
-  const chivaIds = driverRows.map((d) => d.chiva_id);
+    const { error } = await supabase
+      .from("assigned_chivas")
+      .update(payload)
+      .eq("id", id);
 
-  // 2️⃣ Traer tours de TODAS esas chivas
-  const { data, error } = await supabase
-    .from("assigned_chivas")
-    .select("id, departure_at, status, tours(title), chivas(name)")
-    .in("chiva_id", chivaIds)
-    .order("departure_at", { ascending: true });
+    if (error) {
+      console.error("Error actualizando estado:", error);
+    }
 
-  if (error) {
-    console.error("Error cargando tours:", error);
-    tours.value = [];
-  } else {
-    tours.value = data || [];
-  }
+    // 🔄 Igual que antes
+    fetchTours();
+  };
 
-  loading.value = false;
-};
-
-const updateStatus = async (id, newStatus) => {
-  const { error } = await supabase
-    .from("assigned_chivas")
-    .update({ status: newStatus })
-    .eq("id", id);
-
-  if (error) {
-    console.error("Error actualizando estado:", error);
-  }
-
-  fetchTours();
-};
-
-onMounted(fetchTours);
-</script>
+  onMounted(fetchTours);
+  </script>

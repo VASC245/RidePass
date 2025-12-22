@@ -1,34 +1,37 @@
-// src/stores/cartStore.js
-import { defineStore } from 'pinia'
+// src/stores/cartStore.ts
+import { defineStore } from "pinia";
 
-export const useCartStore = defineStore('cart', {
+export const useCartStore = defineStore("cart", {
   state: () => ({
-    items: [], // ✅ Inicializa como arreglo
+    tour: null,
+    seats: [],
   }),
 
-  getters: {
-    totalItems: (state) => state.items.length,
-    totalPrice: (state) => {
-      return state.items.reduce((total, item) => {
-        return total + (item.price || 0)
-      }, 0)
-    },
-  },
-
   actions: {
-    addItem(item) {
-      const exists = this.items.find((i) => i.id === item.id)
-      if (!exists) {
-        this.items.push(item)
+    setTour(tour) {
+      this.tour = tour;
+    },
+
+    addSeat(seat) {
+      if (!this.seats.find(s => s.seat_number === seat.seat_number)) {
+        this.seats.push(seat);
       }
     },
 
-    removeItem(id) {
-      this.items = this.items.filter((i) => i.id !== id)
+    removeSeat(number) {
+      this.seats = this.seats.filter(s => s.seat_number !== number);
     },
 
     clearCart() {
-      this.items = []
-    },
+      this.tour = null;
+      this.seats = [];
+    }
   },
-})
+
+  getters: {
+    total(state) {
+      if (!state.tour) return 0;
+      return state.seats.length * state.tour.tours.base_price;
+    }
+  }
+});
