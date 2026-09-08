@@ -5,22 +5,8 @@
       class="hidden md:flex md:flex-col w-64 bg-white border-r shadow-xl p-6 rounded-tr-3xl rounded-br-3xl transition-all duration-300"
     >
       <!-- Branding -->
-      <div class="flex items-center space-x-2 mb-10">
-        <div
-          class="w-10 h-10 flex items-center justify-center rounded-xl shadow-md"
-          :class="user?.role === 'dueño'
-            ? 'bg-green-600 text-white'
-            : user?.role === 'conductor'
-            ? 'bg-orange-600 text-white'
-            : user?.role === 'negocio'
-            ? 'bg-purple-600 text-white'
-            : 'bg-blue-600 text-white'"
-        >
-          {{ user?.role === 'negocio' ? '🏪' : '🚍' }}
-        </div>
-        <span class="text-2xl font-extrabold tracking-tight text-gray-800">
-          ChivaPass
-        </span>
+      <div class="mb-10 px-1">
+        <BrandLogo :size="28" variant="dark" />
       </div>
 
       <!-- Menú -->
@@ -78,21 +64,7 @@
           class="w-64 h-full bg-white p-6 shadow-2xl rounded-tr-3xl rounded-br-3xl flex flex-col"
         >
           <div class="flex items-center justify-between mb-8">
-            <div class="flex items-center gap-2">
-              <div
-                class="w-10 h-10 flex items-center justify-center rounded-xl shadow-md"
-                :class="user?.role === 'dueño'
-                  ? 'bg-green-600 text-white'
-                  : user?.role === 'conductor'
-                  ? 'bg-orange-600 text-white'
-                  : user?.role === 'negocio'
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-blue-600 text-white'"
-              >
-                {{ user?.role === 'negocio' ? '🏪' : '🚍' }}
-              </div>
-              <span class="text-xl font-bold text-gray-800">ChivaPass</span>
-            </div>
+            <BrandLogo :size="24" variant="dark" />
             <button
               @click="mobileOpen = false"
               class="text-gray-600 text-2xl hover:text-red-500"
@@ -141,12 +113,12 @@
       >
         <h1 class="text-xl font-bold text-gray-800 tracking-tight">
           {{ user?.role === 'dueño'
-            ? '👑 Panel Dueño'
+            ? 'Panel del dueño'
             : user?.role === 'conductor'
-            ? '🚌 Panel Conductor'
+            ? 'Panel del conductor'
             : user?.role === 'negocio'
-            ? '🏪 Panel Negocio'
-            : '🏢 Panel Agencia' }}
+            ? 'Panel del negocio'
+            : 'Panel de agencia' }}
         </h1>
 
         <!-- Botón menú móvil -->
@@ -170,6 +142,7 @@
 import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
+import BrandLogo from "@/components/ui/BrandLogo.vue";
 
 const router = useRouter();
 const authStore = useAuthStore();

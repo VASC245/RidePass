@@ -60,11 +60,16 @@ export function ticketEmail(t: TicketInfo): { subject: string; html: string } {
     ["Pago", t.paymentLabel],
   ]
 
+  // Logo alojado en el sitio (los clientes de correo no cargan SVG ni fuentes)
+  let origin = "https://chivaspass.netlify.app"
+  try { if (t.ticketUrl) origin = new URL(t.ticketUrl).origin } catch { /* usa el valor por defecto */ }
+  const logoUrl = `${origin}/img/brand/chivaspass-logo-white-on-orange.png`
+
   const html = `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:520px;margin:0 auto;color:#111827">
-    <div style="background:#ea580c;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
-      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85">ChivaPass</div>
-      <div style="font-size:20px;font-weight:700;margin-top:4px">${escapeHtml(subject)}</div>
+    <div style="background:#F77F00;color:#fff;padding:20px 24px;border-radius:12px 12px 0 0">
+      <img src="${logoUrl}" alt="chivaspass" width="180" style="display:block;height:auto;border:0;margin:0 0 10px -6px" />
+      <div style="font-size:20px;font-weight:700">${escapeHtml(subject)}</div>
     </div>
     <div style="border:1px solid #e5e7eb;border-top:0;padding:24px;border-radius:0 0 12px 12px">
       <p style="margin:0 0 12px">Hola ${escapeHtml(t.customer.name)},</p>
@@ -83,7 +88,7 @@ export function ticketEmail(t: TicketInfo): { subject: string; html: string } {
         </a>
       </p>
       <p style="margin:0;text-align:center;font-size:12px;color:#9ca3af">${escapeHtml(t.ticketUrl)}</p>` : ""}
-      <p style="margin:24px 0 0;font-size:12px;color:#9ca3af">ChivaPass · Baños de Agua Santa, Ecuador</p>
+      <p style="margin:24px 0 0;font-size:12px;color:#9ca3af">chivaspass · Baños de Agua Santa, Ecuador</p>
     </div>
   </div>`
 
