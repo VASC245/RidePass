@@ -22,17 +22,16 @@ enabled = true
 site_url = "http://localhost:5173"
 additional_redirect_urls = ["http://localhost:5173"]
 
+# Desactivado en local/CI: la imagen de storage-api del CLI está rota (tag
+# inexistente). El esquema storage (buckets, objects, foldername) ya viene en
+# la imagen de Postgres, que es lo que usan las migraciones.
 [storage]
-enabled = true
-file_size_limit = "5MiB"
+enabled = false
 
 [realtime]
 enabled = false
 
 [studio]
-enabled = false
-
-[inbucket]
 enabled = false
 
 [analytics]
