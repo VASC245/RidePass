@@ -1,0 +1,17 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.kushkipagos.com; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.kushkipagos.com; img-src 'self' data: blob: https://*.supabase.co; font-src 'self'; frame-src https://*.kushkipagos.com; object-src 'none'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(self), microphone=()
+
+# Los assets de Vite llevan hash en el nombre: cachear un año en CDN y navegador
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/img/*
+  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+
+# El HTML nunca se cachea para que cada deploy llegue de inmediato
+/index.html
+  Cache-Control: no-cache

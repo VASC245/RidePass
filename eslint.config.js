@@ -21,4 +21,12 @@ export default defineConfig([
 
   js.configs.recommended,
   ...pluginVue.configs['flat/essential'],
+
+  {
+    name: 'app/rules',
+    rules: {
+      // Login, Register, Dashboard, Checkout son nombres de página válidos aquí
+      'vue/multi-word-component-names': 'off',
+    },
+  },
 ])

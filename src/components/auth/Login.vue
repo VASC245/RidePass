@@ -35,11 +35,16 @@
           />
         </div>
 
+        <p v-if="loginError" class="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3 font-medium">
+          {{ loginError }}
+        </p>
+
         <button
           type="submit"
-          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
+          :disabled="loggingIn"
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold shadow-sm transition active:scale-95 disabled:opacity-60"
         >
-          Ingresar
+          {{ loggingIn ? "Ingresando..." : "Ingresar" }}
         </button>
       </form>
 
@@ -99,6 +104,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
+import { homeFor } from "@/router";
 
 const email = ref("");
 const password = ref("");
@@ -108,15 +114,28 @@ const masterKeyInput = ref("");
 const router = useRouter();
 const authStore = useAuthStore();
 
+const loginError = ref("");
+const loggingIn = ref(false);
+
 const login = async () => {
-  await authStore.login(email.value, password.value);
-  router.push("/");
+  loginError.value = "";
+  loggingIn.value = true;
+  try {
+    await authStore.login(email.value, password.value);
+    router.push(homeFor(authStore.user?.role));
+  } catch (e) {
+    loginError.value = /invalid/i.test(e.message)
+      ? "Correo o contraseña incorrectos."
+      : (e.message || "No se pudo iniciar sesión.");
+  } finally {
+    loggingIn.value = false;
+  }
 };
 
 const verifyKey = () => {
   if (masterKeyInput.value === "CHIVASPASS2025") {
     showModal.value = false;
-    router.push("/register");
+    router.push("/panel/register");
   } else {
     alert("❌ Clave incorrecta");
   }

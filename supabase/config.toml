@@ -1,2 +1,49 @@
+# Configuración del CLI de Supabase.
+# `supabase db start` / `supabase test db` (CI) usan este archivo para
+# levantar un Postgres local con todas las migraciones.
+project_id = "chivaspass"
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = false
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[auth]
+enabled = true
+site_url = "http://localhost:5173"
+additional_redirect_urls = ["http://localhost:5173"]
+
+[storage]
+enabled = true
+file_size_limit = "5MiB"
+
+[studio]
+enabled = false
+
+[inbucket]
+enabled = false
+
+[analytics]
+enabled = false
+
+# Todas las funciones exigen un JWT válido (anon key o sesión de usuario).
+# public-reserve y kushki-charge además leen el JWT del usuario cuando lo hay
+# para distinguir invitado / agencia / dueño.
+[functions.public-reserve]
+verify_jwt = true
+
+[functions.kushki-charge]
+verify_jwt = true
+
+# Retirada: responde 410. Eliminar con `npx supabase functions delete send-ticket`.
 [functions.send-ticket]
-verify_jwt = false
+verify_jwt = true

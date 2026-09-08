@@ -1,7 +1,9 @@
 {
   "tasks": {},
-  "imports": {
-    "qrcode": "https://deno.land/x/qrcode/mod.ts",
-    "resend": "https://esm.sh/resend@3"
+  "imports": {},
+  "lint": {
+    "rules": {
+      "exclude": ["no-import-prefix"]
+    }
   }
 }
