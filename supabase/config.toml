@@ -26,6 +26,9 @@ additional_redirect_urls = ["http://localhost:5173"]
 enabled = true
 file_size_limit = "5MiB"
 
+[realtime]
+enabled = false
+
 [studio]
 enabled = false
 

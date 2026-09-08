@@ -44,9 +44,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Fijado: 2.117.0 referencia una imagen de storage-api inexistente
       - uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 2.116.0
       - name: Levantar Postgres local y aplicar todas las migraciones
         run: supabase db start
       - name: Pruebas pgTAP
