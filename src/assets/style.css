@@ -14,3 +14,6 @@ body {
   color: #16181d;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Wordmark del logo (Sora 800). Cae a Archivo si la fuente no carga. */
+.font-brand { font-family: 'Sora', 'Archivo', system-ui, sans-serif; }

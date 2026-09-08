@@ -5,11 +5,8 @@
     <nav class="bg-white border-b border-gray-200 sticky top-0 z-40">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
 
-        <RouterLink to="/" class="flex items-center gap-2 shrink-0 no-underline">
-          <span class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center">
-            <PhVan :size="18" weight="fill" class="text-white" />
-          </span>
-          <span class="text-lg font-extrabold text-gray-900 tracking-tight">chivapass</span>
+        <RouterLink to="/" class="flex items-center shrink-0 no-underline" aria-label="Inicio">
+          <BrandLogo :size="26" />
         </RouterLink>
 
         <!-- buscador (desktop) -->
@@ -83,11 +80,8 @@
     <footer class="bg-gray-950 text-gray-400 pt-14 pb-8 px-4 sm:px-6">
       <div class="max-w-7xl mx-auto grid sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-12">
         <div>
-          <div class="flex items-center gap-2 mb-4">
-            <span class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center">
-              <PhVan :size="17" weight="fill" class="text-white" />
-            </span>
-            <span class="font-extrabold text-white text-lg tracking-tight">chivapass</span>
+          <div class="mb-4">
+            <BrandLogo :size="24" variant="white" />
           </div>
           <p class="text-sm leading-relaxed text-gray-500 max-w-xs">
             Entradas para tours en chiva y atracciones de Baños de Agua Santa. Compra en línea y recibe tu código QR al instante.
@@ -134,7 +128,8 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { PhVan, PhMagnifyingGlass, PhTicket, PhList, PhX, PhMapPin } from '@phosphor-icons/vue'
+import { PhMagnifyingGlass, PhTicket, PhList, PhX, PhMapPin } from '@phosphor-icons/vue'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 
 const router   = useRouter()
 const q        = ref('')

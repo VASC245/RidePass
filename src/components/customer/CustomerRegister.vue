@@ -2,7 +2,7 @@
   <div class="flex items-center justify-center min-h-[80vh] p-4">
     <div class="bg-white rounded-2xl shadow-lg border border-gray-100 w-full max-w-sm p-8 space-y-5">
       <div class="text-center">
-        <div class="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-3">🎟️</div>
+        <div class="flex justify-center mb-4"><BrandLogo :size="30" /></div>
         <h2 class="text-2xl font-extrabold text-gray-900">Crea tu cuenta</h2>
         <p class="text-sm text-gray-400 mt-1">Guarda y gestiona todas tus entradas</p>
       </div>

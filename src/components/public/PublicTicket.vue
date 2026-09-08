@@ -27,7 +27,7 @@
         class="rounded-t-3xl p-5 text-center text-white"
         :class="ticket.used ? 'bg-gray-600' : 'bg-gray-900'"
       >
-        <p class="text-[11px] font-semibold tracking-[0.2em] uppercase opacity-70">ChivaPass</p>
+        <div class="flex justify-center mb-2"><BrandLogo :size="20" variant="white" /></div>
         <h1 class="text-xl font-extrabold mt-1">
           {{ ticket.used ? (isTour ? 'Ticket usado' : 'Entrada usada') : (isTour ? 'Ticket de embarque' : 'Entrada válida') }}
         </h1>
@@ -95,6 +95,7 @@ import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
 import { PhTicket } from '@phosphor-icons/vue'
 import { supabase } from '@/lib/supabase'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 
 const route   = useRoute()
 const loading = ref(true)

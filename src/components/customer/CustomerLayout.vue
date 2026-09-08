@@ -2,9 +2,8 @@
   <div class="min-h-screen bg-gray-50 flex flex-col">
     <nav class="bg-white border-b shadow-sm sticky top-0 z-40">
       <div class="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-        <RouterLink to="/" class="flex items-center gap-3">
-          <div class="w-9 h-9 bg-indigo-600 rounded-xl flex items-center justify-center text-white text-lg shadow">🎟️</div>
-          <span class="text-lg font-extrabold text-gray-900 tracking-tight">ChivaPass</span>
+        <RouterLink to="/" class="flex items-center" aria-label="Inicio">
+          <BrandLogo :size="26" />
         </RouterLink>
 
         <div class="flex items-center gap-3">
@@ -33,6 +32,7 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'vue-router'
+import BrandLogo from '@/components/ui/BrandLogo.vue'
 
 const authStore = useAuthStore()
 const router    = useRouter()

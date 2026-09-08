@@ -14,13 +14,13 @@ const securityHeaders = [
       // Scripts: propio + Kushki tokenizador (NO permite inline arbitrario en prod)
       "script-src 'self' 'unsafe-inline' https://cdn.kushkipagos.com",
       // Estilos: propio + inline (Tailwind inyecta styles)
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Conexiones: Supabase + Kushki API + Twilio (solo desde Edge Functions, pero por si acaso)
       "connect-src 'self' https://*.supabase.co https://*.kushkipagos.com",
       // Imágenes: propio + data URIs (para los QR generados)
       "img-src 'self' data: https://*.supabase.co",
       // Fuentes propias
-      "font-src 'self'",
+      "font-src 'self' https://fonts.gstatic.com",
       // Iframes: Kushki puede abrir 3DS en iframe
       "frame-src https://*.kushkipagos.com",
       // Nunca ejecutar objetos embebidos

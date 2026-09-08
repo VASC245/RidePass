@@ -4,8 +4,11 @@
     <div
       class="bg-white p-10 rounded-2xl shadow-lg w-full max-w-md border border-gray-200"
     >
-      <h2 class="text-3xl font-extrabold mb-6 text-center text-gray-800">
-        🚍 Iniciar Sesión
+      <div class="flex justify-center mb-6">
+        <BrandLogo :size="34" />
+      </div>
+      <h2 class="text-xl font-bold mb-6 text-center text-gray-800">
+        Panel de vendedores
       </h2>
 
       <form @submit.prevent="login" class="space-y-5">
@@ -105,6 +108,7 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 import { homeFor } from "@/router";
+import BrandLogo from "@/components/ui/BrandLogo.vue";
 
 const email = ref("");
 const password = ref("");

@@ -4,8 +4,11 @@
     <div
       class="bg-white p-10 rounded-2xl shadow-lg w-full max-w-md border border-gray-200"
     >
-      <h2 class="text-3xl font-extrabold text-center text-gray-800 mb-6">
-        📝 Registrar Usuario
+      <div class="flex justify-center mb-6">
+        <BrandLogo :size="34" />
+      </div>
+      <h2 class="text-xl font-bold text-center text-gray-800 mb-6">
+        Crear cuenta de vendedor
       </h2>
 
       <form @submit.prevent="register" class="space-y-5">
@@ -111,6 +114,7 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
+import BrandLogo from "@/components/ui/BrandLogo.vue";
 
 const fullName = ref("");
 const email = ref("");
