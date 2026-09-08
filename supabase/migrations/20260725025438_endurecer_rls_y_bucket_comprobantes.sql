@@ -31,13 +31,17 @@ create policy "btickets: insert owner"
   to authenticated
   with check (auth.uid() = owner_id);
 
-update storage.buckets set public = false where id = 'comprobantes';
-
-drop policy if exists "comprobantes: lectura pública" on storage.objects;
-create policy "comprobantes: lectura autenticados"
-  on storage.objects for select
-  to authenticated
-  using (bucket_id = 'comprobantes');
+DO $storage$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='storage' AND table_name='buckets' AND column_name='public') THEN
+    UPDATE storage.buckets SET public = false WHERE id = 'comprobantes';
+    EXECUTE 'DROP POLICY IF EXISTS "comprobantes: lectura pública" ON storage.objects';
+    EXECUTE $p$CREATE POLICY "comprobantes: lectura autenticados"
+      ON storage.objects FOR SELECT TO authenticated
+      USING (bucket_id = 'comprobantes')$p$;
+  END IF;
+END;
+$storage$;
 
 revoke execute on function public.create_seats_for_assigned_chiva() from anon, authenticated;
 revoke execute on function public.handle_new_user() from anon, authenticated;

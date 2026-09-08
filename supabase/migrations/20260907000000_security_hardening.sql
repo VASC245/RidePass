@@ -257,29 +257,36 @@ CREATE POLICY "sales: customer email view" ON public.sales_simple FOR SELECT
 
 -- ================================================================
 -- 4. STORAGE: bucket privado
+--    (guardado en un DO: el Postgres local del CI no tiene storage-api)
 -- ================================================================
-UPDATE storage.buckets SET public = false WHERE id = 'comprobantes';
+DO $storage$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='storage' AND table_name='buckets' AND column_name='public') THEN
+    UPDATE storage.buckets SET public = false WHERE id = 'comprobantes';
 
-DROP POLICY IF EXISTS "comprobantes: lectura pública"      ON storage.objects;
-DROP POLICY IF EXISTS "comprobantes: lectura autenticados" ON storage.objects;
-DROP POLICY IF EXISTS "comprobantes: upload abierto"       ON storage.objects;
-DROP POLICY IF EXISTS "comprobantes: upload"          ON storage.objects;
-DROP POLICY IF EXISTS "comprobantes: lee el vendedor" ON storage.objects;
+    EXECUTE 'DROP POLICY IF EXISTS "comprobantes: lectura pública"      ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "comprobantes: lectura autenticados" ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "comprobantes: upload abierto"       ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "comprobantes: upload"               ON storage.objects';
+    EXECUTE 'DROP POLICY IF EXISTS "comprobantes: lee el vendedor"      ON storage.objects';
 
--- Subida: cualquiera (invitados incluidos), solo dentro de la carpeta comprobantes/
-CREATE POLICY "comprobantes: upload"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'comprobantes' AND (storage.foldername(name))[1] = 'comprobantes');
+    -- Subida: cualquiera (invitados incluidos), solo dentro de la carpeta comprobantes/
+    EXECUTE $p$CREATE POLICY "comprobantes: upload"
+      ON storage.objects FOR INSERT
+      WITH CHECK (bucket_id = 'comprobantes' AND (storage.foldername(name))[1] = 'comprobantes')$p$;
 
--- Lectura: solo el dueño/negocio al que pertenece el comprobante (URLs firmadas)
-CREATE POLICY "comprobantes: lee el vendedor"
-  ON storage.objects FOR SELECT
-  USING (
-    bucket_id = 'comprobantes' AND (
-      EXISTS (SELECT 1 FROM public.pending_payments p WHERE p.comprobante_path = storage.objects.name AND p.owner_id = auth.uid())
-      OR EXISTS (SELECT 1 FROM public.business_tickets t WHERE t.payment_proof_path = storage.objects.name AND t.owner_id = auth.uid())
-    )
-  );
+    -- Lectura: solo el dueño/negocio al que pertenece el comprobante (URLs firmadas)
+    EXECUTE $p$CREATE POLICY "comprobantes: lee el vendedor"
+      ON storage.objects FOR SELECT
+      USING (
+        bucket_id = 'comprobantes' AND (
+          EXISTS (SELECT 1 FROM public.pending_payments p WHERE p.comprobante_path = storage.objects.name AND p.owner_id = auth.uid())
+          OR EXISTS (SELECT 1 FROM public.business_tickets t WHERE t.payment_proof_path = storage.objects.name AND t.owner_id = auth.uid())
+        )
+      )$p$;
+  END IF;
+END;
+$storage$;
 
 
 -- ================================================================

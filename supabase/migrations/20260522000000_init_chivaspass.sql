@@ -265,23 +265,24 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.pending_payments;
 
 -- ================================================================
 -- STORAGE — Bucket para comprobantes de pago
+-- (guardado en un DO: el Postgres local del CI arranca sin storage-api y
+--  su esquema storage no tiene estas columnas; en producción sí existen)
 -- ================================================================
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES (
-  'comprobantes',
-  'comprobantes',
-  true,
-  5242880,  -- 5 MB
-  ARRAY['image/jpeg','image/png','image/webp','application/pdf']
-)
-ON CONFLICT (id) DO NOTHING;
+DO $storage$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='storage' AND table_name='buckets' AND column_name='public') THEN
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES ('comprobantes', 'comprobantes', true, 5242880,
+            ARRAY['image/jpeg','image/png','image/webp','application/pdf'])
+    ON CONFLICT (id) DO NOTHING;
 
--- Política: cualquiera puede subir al bucket
-CREATE POLICY "comprobantes: upload abierto"
-  ON storage.objects FOR INSERT
-  WITH CHECK (bucket_id = 'comprobantes');
+    EXECUTE $p$CREATE POLICY "comprobantes: upload abierto"
+      ON storage.objects FOR INSERT
+      WITH CHECK (bucket_id = 'comprobantes')$p$;
 
--- Política: lectura pública (para mostrar imágenes del comprobante)
-CREATE POLICY "comprobantes: lectura pública"
-  ON storage.objects FOR SELECT
-  USING (bucket_id = 'comprobantes');
+    EXECUTE $p$CREATE POLICY "comprobantes: lectura pública"
+      ON storage.objects FOR SELECT
+      USING (bucket_id = 'comprobantes')$p$;
+  END IF;
+END;
+$storage$;
