@@ -12,9 +12,11 @@
             ? 'bg-green-600 text-white'
             : user?.role === 'conductor'
             ? 'bg-orange-600 text-white'
+            : user?.role === 'negocio'
+            ? 'bg-purple-600 text-white'
             : 'bg-blue-600 text-white'"
         >
-          🚍
+          {{ user?.role === 'negocio' ? '🏪' : '🚍' }}
         </div>
         <span class="text-2xl font-extrabold tracking-tight text-gray-800">
           ChivaPass
@@ -33,6 +35,8 @@
               ? 'hover:bg-green-50 text-gray-700'
               : user?.role === 'conductor'
               ? 'hover:bg-orange-50 text-gray-700'
+              : user?.role === 'negocio'
+              ? 'hover:bg-purple-50 text-gray-700'
               : 'hover:bg-blue-50 text-gray-700'
           ]"
           active-class="bg-gray-200 text-gray-900 font-semibold shadow-sm"
@@ -54,6 +58,8 @@
             ? 'bg-green-600 hover:bg-green-700 text-white'
             : user?.role === 'conductor'
             ? 'bg-orange-600 hover:bg-orange-700 text-white'
+            : user?.role === 'negocio'
+            ? 'bg-purple-600 hover:bg-purple-700 text-white'
             : 'bg-blue-600 hover:bg-blue-700 text-white'"
         >
           Cerrar sesión
@@ -79,9 +85,11 @@
                   ? 'bg-green-600 text-white'
                   : user?.role === 'conductor'
                   ? 'bg-orange-600 text-white'
+                  : user?.role === 'negocio'
+                  ? 'bg-purple-600 text-white'
                   : 'bg-blue-600 text-white'"
               >
-                🚍
+                {{ user?.role === 'negocio' ? '🏪' : '🚍' }}
               </div>
               <span class="text-xl font-bold text-gray-800">ChivaPass</span>
             </div>
@@ -114,6 +122,8 @@
                 ? 'bg-green-600 hover:bg-green-700'
                 : user?.role === 'conductor'
                 ? 'bg-orange-600 hover:bg-orange-700'
+                : user?.role === 'negocio'
+                ? 'bg-purple-600 hover:bg-purple-700'
                 : 'bg-blue-600 hover:bg-blue-700'"
             >
               Cerrar sesión
@@ -134,6 +144,8 @@
             ? '👑 Panel Dueño'
             : user?.role === 'conductor'
             ? '🚌 Panel Conductor'
+            : user?.role === 'negocio'
+            ? '🏪 Panel Negocio'
             : '🏢 Panel Agencia' }}
         </h1>
 
@@ -161,31 +173,46 @@ import { useAuthStore } from "@/stores/authStore";
 
 const router = useRouter();
 const authStore = useAuthStore();
-const user = authStore.user;
+// computed: se actualiza al iniciar/cerrar sesión sin recargar la página
+const user = computed(() => authStore.user);
 const mobileOpen = ref(false);
 
 const menuItems = computed(() => {
-  if (user?.role === "dueño") {
+  if (user.value?.role ==="dueño") {
     return [
-      { label: "Dashboard", path: "/dashboard" },
-      { label: "Mis Chivas", path: "/chivas" },
-      { label: "Conductores", path: "/conductores" },
-      { label: "Tours", path: "/tours" },
-      { label: "Gestión de Tours", path: "/nuevo-tour" },
-      { label: "Asignar Salidas", path: "/asignar" },
-      { label: "Comprobantes de Pago", path: "/pagos" }, // 💰 nuevo acceso
-      { label: "Embarque (Escanear)", path: "/embarque" },
-      { label: "Mis Ventas", path: "/mis-ventas" },
+      { label: "Dashboard",           path: "/panel/dashboard" },
+      { label: "Mis Chivas",          path: "/panel/chivas" },
+      { label: "Conductores",         path: "/panel/conductores" },
+      { label: "Tours",               path: "/panel/tours" },
+      { label: "Gestión de Tours",    path: "/panel/nuevo-tour" },
+      { label: "Asignar Salidas",     path: "/panel/asignar" },
+      { label: "Comprobantes",        path: "/panel/pagos" },
+      { label: "Embarque (Escanear)", path: "/panel/embarque" },
+      { label: "Mis Ventas",          path: "/panel/mis-ventas" },
+      { label: "⚙️ Configuración",   path: "/panel/configuracion" },
+      { label: "💎 Planes",          path: "/panel/planes" },
     ];
-  } else if (user?.role === "agencia") {
+  } else if (user.value?.role ==="agencia") {
     return [
-      { label: "Tours Disponibles", path: "/tours-disponibles" },
-      { label: "Vender Boletos", path: "/vender-boletos" },
+      { label: "Tours Disponibles",  path: "/panel/tours-disponibles" },
+      { label: "Vender Boletos",     path: "/panel/vender-boletos" },
+      { label: "⚙️ Configuración",  path: "/panel/configuracion" },
+      { label: "💎 Planes",         path: "/panel/planes" },
     ];
-  } else if (user?.role === "conductor") {
+  } else if (user.value?.role ==="conductor") {
     return [
-      { label: "Mis Tours", path: "/mis-tours" },
-      { label: "Escanear QR", path: "/escanear" },
+      { label: "Mis Tours",    path: "/panel/mis-tours" },
+      { label: "Escanear QR", path: "/panel/escanear" },
+    ];
+  } else if (user.value?.role ==="negocio") {
+    return [
+      { label: "Dashboard",          path: "/panel/negocio-dashboard" },
+      { label: "Mi Negocio",         path: "/panel/negocio-perfil" },
+      { label: "Eventos",            path: "/panel/negocio-eventos" },
+      { label: "Tickets",            path: "/panel/negocio-tickets" },
+      { label: "Escanear QR",        path: "/panel/negocio-escanear" },
+      { label: "⚙️ Configuración",  path: "/panel/configuracion" },
+      { label: "💎 Planes",         path: "/panel/planes" },
     ];
   }
   return [];
@@ -193,7 +220,7 @@ const menuItems = computed(() => {
 
 const logout = async () => {
   await authStore.logout();
-  router.push("/login");
+  router.push("/panel/login");
 };
 </script>
 

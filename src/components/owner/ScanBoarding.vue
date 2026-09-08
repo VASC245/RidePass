@@ -52,32 +52,35 @@ import BaseCard from "@/components/ui/BaseCard.vue";
 
 const videoRef = ref(null);
 const scanResult = ref("");
-const beep = new Audio("/beep.mp3");
+const scanKind = ref("");   // ok | warn | error
+const busy = ref(false);
 
 let stream = null;
 let animationFrameId = null;
 
-// 🔹 Iniciar cámara
+const setResult = (kind, text) => {
+  scanKind.value = kind;
+  scanResult.value = text;
+};
+
+// Iniciar cámara
 const startScanner = async () => {
-  scanResult.value = "";
+  setResult("", "");
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
     });
     videoRef.value.srcObject = stream;
-    requestAnimationFrame(tick);
+    animationFrameId = requestAnimationFrame(tick);
   } catch (err) {
     console.error("Error accediendo a cámara:", err);
-    scanResult.value = "❌ No se pudo acceder a la cámara.";
+    setResult("error", "No se pudo acceder a la cámara. Revisa los permisos del navegador.");
   }
 };
 
-// 🔹 Leer frames
+// Leer frames
 const tick = async () => {
-  if (
-    !videoRef.value ||
-    videoRef.value.readyState !== videoRef.value.HAVE_ENOUGH_DATA
-  ) {
+  if (!videoRef.value || videoRef.value.readyState !== videoRef.value.HAVE_ENOUGH_DATA) {
     animationFrameId = requestAnimationFrame(tick);
     return;
   }
@@ -85,7 +88,6 @@ const tick = async () => {
   const canvas = document.createElement("canvas");
   canvas.width = videoRef.value.videoWidth;
   canvas.height = videoRef.value.videoHeight;
-
   const ctx = canvas.getContext("2d");
   ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height);
   const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -94,7 +96,7 @@ const tick = async () => {
     inversionAttempts: "dontInvert",
   });
 
-  if (code) {
+  if (code && !busy.value) {
     await handleScan(code.data);
     return;
   }
@@ -102,82 +104,60 @@ const tick = async () => {
   animationFrameId = requestAnimationFrame(tick);
 };
 
-// 🔹 Procesar QR (ÚNICA PARTE NUEVA)
+// El QR solo contiene el id de la venta. La función board_sale valida en la
+// base de datos que la venta esté pagada, que pertenezca a este dueño o
+// conductor, y marca los asientos como abordados una sola vez.
 const handleScan = async (qrText) => {
+  busy.value = true;
   try {
-    console.log("📸 QR RAW:", qrText);
+    const { data, error } = await supabase.rpc("board_sale", { p_qr: String(qrText).trim() });
+    if (error) throw error;
 
-    // 1️⃣ normalizar texto
-    const cleaned = decodeURIComponent(qrText).trim();
-    console.log("🧹 QR CLEAN:", cleaned);
-
-    // 2️⃣ parsear
-    const payload = JSON.parse(cleaned);
-    console.log("📦 QR PAYLOAD:", payload);
-
-    if (
-      !payload.assigned_chiva_id ||
-      !Array.isArray(payload.seats)
-    ) {
-      scanResult.value = "⚠️ QR inválido.";
-      return;
+    if (data?.ok) {
+      const seats = (data.seats ?? []).join(", ");
+      setResult("ok", `Abordaron ${data.customer ?? "pasajeros"} · asientos ${seats}${data.tour ? ` · ${data.tour}` : ""}.`);
+      await playBeep();
+    } else if (data?.code === "ALREADY_BOARDED") {
+      setResult("warn", `${data.message} Asientos ${(data.seats ?? []).join(", ")}.`);
+    } else {
+      setResult("warn", data?.message || "QR inválido.");
     }
-
-    // 3️⃣ actualizar asientos
-    const { error } = await supabase
-      .from("seats")
-      .update({ status: "abordado" })
-      .eq("assigned_chiva_id", payload.assigned_chiva_id)
-      .in("seat_number", payload.seats);
-
-    if (error) {
-      console.error("❌ Error actualizando asientos:", error);
-      scanResult.value = "❌ Error abordando asientos.";
-      return;
-    }
-
-    scanResult.value = `✅ Pasajeros ${payload.seats.join(", ")} abordados con éxito.`;
-    await playBeep();
   } catch (err) {
-    console.error("❌ ERROR QR:", err);
-    scanResult.value = "⚠️ QR inválido.";
+    console.error("board_sale:", err);
+    setResult("error", "No se pudo validar el ticket. Intenta de nuevo.");
+  } finally {
+    busy.value = false;
   }
 };
 
-
-// 🔹 Sonido
+// Sonido
+const beep = typeof Audio !== "undefined" ? new Audio("/beep.mp3") : null;
 const playBeep = async () => {
+  if (!beep) return;
   try {
     beep.currentTime = 0;
     await beep.play();
   } catch (err) {
-    if (err.name !== "AbortError") {
+    if (err.name !== "AbortError" && err.name !== "NotSupportedError") {
       console.error("Error al reproducir beep:", err);
     }
   }
 };
 
-// 🔹 Limpieza
+// Limpieza
 onBeforeUnmount(() => {
   if (stream) stream.getTracks().forEach((track) => track.stop());
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
-  beep.pause();
-  beep.currentTime = 0;
+  if (beep) { beep.pause(); beep.currentTime = 0; }
 });
 
-onMounted(() => {
-  startScanner();
-});
+onMounted(startScanner);
 
-const scanResultClass = computed(() => {
-  if (scanResult.value.startsWith("✅"))
-    return "bg-green-100 text-green-700 border border-green-300";
-  if (scanResult.value.startsWith("⚠️"))
-    return "bg-yellow-100 text-yellow-700 border border-yellow-300";
-  if (scanResult.value.startsWith("❌"))
-    return "bg-red-100 text-red-700 border border-red-300";
-  return "bg-gray-100 text-gray-700 border border-gray-200";
-});
+const scanResultClass = computed(() => ({
+  ok:    "bg-green-100 text-green-700 border border-green-300",
+  warn:  "bg-yellow-100 text-yellow-700 border border-yellow-300",
+  error: "bg-red-100 text-red-700 border border-red-300",
+}[scanKind.value] ?? "bg-gray-100 text-gray-700 border border-gray-200"));
 </script>
 
 <style scoped>

@@ -108,8 +108,9 @@ onMounted(() => {
 });
 
 // 🔹 Convertimos el resultado del store a la estructura que SellPage espera
+// Solo tours cuyo dueño permite venta por agencias
 const displayTours = computed(() =>
-  toursStore.tours.map((item) => ({
+  toursStore.tours.filter((item) => item.allow_agency_sales).map((item) => ({
     id: item.id,
     name: item.title,             // ← antes item.tours.title
     base_price: item.base_price,  // ← antes item.tours.base_price

@@ -63,29 +63,36 @@
         <p><strong>Monto para el dueño:</strong> ${{ selectedPago.monto_owner }}</p>
 
         <div class="mt-3 text-center">
+          <p v-if="!proofUrl" class="text-sm text-gray-400">Cargando comprobante…</p>
           <img
-            v-if="isImage(selectedPago.comprobante_url)"
-            :src="selectedPago.comprobante_url"
+            v-else-if="isImage(selectedPago.comprobante_path || selectedPago.comprobante_url)"
+            :src="proofUrl"
             class="max-h-80 border rounded-lg mx-auto"
           />
-          <a v-else :href="selectedPago.comprobante_url" target="_blank">📄 Ver PDF</a>
+          <a v-else :href="proofUrl" target="_blank">📄 Ver PDF</a>
         </div>
 
-        <div class="flex justify-between mt-6">
-          <button
-            @click="updateEstado('verificado')"
-            class="bg-green-600 text-white px-4 py-2 rounded-lg"
-          >
-            ✅ Verificar
-          </button>
+        <p v-if="feedback" class="mt-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{{ feedback }}</p>
 
+        <div v-if="selectedPago.estado === 'pendiente'" class="flex justify-between gap-3 mt-6">
           <button
             @click="updateEstado('rechazado')"
-            class="bg-red-600 text-white px-4 py-2 rounded-lg"
+            :disabled="working"
+            class="flex-1 border border-red-200 text-red-700 px-4 py-2.5 rounded-lg font-semibold hover:bg-red-50 disabled:opacity-50"
           >
-            ❌ Rechazar
+            Rechazar
+          </button>
+          <button
+            @click="updateEstado('verificado')"
+            :disabled="working"
+            class="flex-[2] bg-green-600 text-white px-4 py-2.5 rounded-lg font-semibold hover:bg-green-700 disabled:opacity-50"
+          >
+            {{ working ? "Procesando..." : "Verificar y confirmar asientos" }}
           </button>
         </div>
+        <p v-else class="mt-6 text-center text-sm text-gray-500">
+          Este comprobante ya fue {{ selectedPago.estado }}.
+        </p>
       </BaseCard>
     </div>
   </div>
@@ -102,106 +109,75 @@ const auth = useAuthStore();
 const comprobantes = ref([]);
 const selectedPago = ref(null);
 const loading = ref(true);
+const proofUrl = ref("");
+const working = ref(false);
+const feedback = ref("");
 
-const formatDate = (d) => new Date(d).toLocaleString();
+const formatDate = (d) => new Date(d).toLocaleString("es-EC");
 
-const isImage = (url) =>
-  url?.toLowerCase().endsWith(".jpg") ||
-  url?.toLowerCase().endsWith(".jpeg") ||
-  url?.toLowerCase().endsWith(".png");
+const isImage = (url) => /\.(jpe?g|png|webp)$/i.test(url ?? "");
 
-// ABRIR MODAL
-const openModal = (pago) => (selectedPago.value = pago);
+// El bucket es privado: URL firmada desde la ruta (RLS permite leer solo
+// los comprobantes de este dueño).
+const openModal = async (pago) => {
+  selectedPago.value = pago;
+  proofUrl.value = "";
+  feedback.value = "";
+  if (pago.comprobante_path) {
+    const { data } = await supabase.storage
+      .from("comprobantes")
+      .createSignedUrl(pago.comprobante_path, 3600);
+    proofUrl.value = data?.signedUrl || "";
+  }
+  if (!proofUrl.value && pago.comprobante_url?.startsWith("http")) {
+    proofUrl.value = pago.comprobante_url;
+  }
+};
 
-// CARGAR COMPROBANTES DEL DUEÑO
+// Una sola consulta con joins en lugar de N+1
 const fetchComprobantes = async () => {
   loading.value = true;
-
-  const { data: assigned } = await supabase
-    .from("assigned_chivas")
-    .select("id, tour_id, chiva_id")
-    .eq("user_id", auth.user.id);
-
-  if (!assigned?.length) {
-    comprobantes.value = [];
-    loading.value = false;
-    return;
-  }
-
-  const ids = assigned.map((x) => x.id);
-
-  const { data: pagos } = await supabase
+  const { data, error } = await supabase
     .from("pending_payments")
-    .select("*")
-    .in("assigned_chiva_id", ids)
+    .select("*, assigned_chivas ( tours ( title ), chivas ( name ) ), sales_simple ( customer_name, seats, status )")
+    .eq("owner_id", auth.user.id)
     .order("created_at", { ascending: false });
 
-  const enriched = [];
-
-  for (const pago of pagos) {
-    const match = assigned.find((a) => a.id === pago.assigned_chiva_id);
-
-    const { data: tour } = await supabase
-      .from("tours")
-      .select("title")
-      .eq("id", match?.tour_id)
-      .maybeSingle();
-
-    const { data: chiva } = await supabase
-      .from("chivas")
-      .select("name")
-      .eq("id", match?.chiva_id)
-      .maybeSingle();
-
-    enriched.push({
-      ...pago,
-      tour_title: tour?.title || "Sin título",
-      chiva_name: chiva?.name || "Sin chiva",
-    });
+  if (error) {
+    console.error("pending_payments:", error.message);
+    comprobantes.value = [];
+  } else {
+    comprobantes.value = (data ?? []).map((p) => ({
+      ...p,
+      tour_title: p.assigned_chivas?.tours?.title || "Sin título",
+      chiva_name: p.assigned_chivas?.chivas?.name || "Sin chiva",
+      customer_name: p.sales_simple?.customer_name || p.agency_name,
+    }));
   }
-
-  comprobantes.value = enriched;
   loading.value = false;
 };
 
-// CAMBIAR ESTADO Y REGISTRAR BALANCE
+// verify_pending_payment hace todo en una transacción: marca el comprobante,
+// confirma o cancela la venta y pone los asientos en pagado / disponible.
 const updateEstado = async (nuevoEstado) => {
   const pago = selectedPago.value;
+  if (!pago || working.value) return;
+  working.value = true;
+  feedback.value = "";
 
-  if (!pago) return;
+  const { error } = await supabase.rpc("verify_pending_payment", {
+    p_payment_id: pago.id,
+    p_estado: nuevoEstado,
+  });
 
-  await supabase.from("pending_payments")
-    .update({ estado: nuevoEstado })
-    .eq("id", pago.id);
+  working.value = false;
 
-  if (nuevoEstado === "verificado") {
-    // INSERT OWNER BALANCE
-    await supabase.from("owner_balance").insert([
-      {
-        owner_id: pago.owner_id,
-        assigned_chiva_id: pago.assigned_chiva_id,
-        comprobante_id: pago.id,
-        boletos_vendidos: pago.boletos_vendidos,
-        monto_total: pago.monto_owner,
-        created_at: new Date(),
-      },
-    ]);
-
-    // INSERT AGENCY BALANCE
-    await supabase.from("agency_balance").insert([
-      {
-        agency_id: pago.agency_id,
-        assigned_chiva_id: pago.assigned_chiva_id,
-        comprobante_id: pago.id,
-        boletos_vendidos: pago.boletos_vendidos,
-        monto_total: pago.monto_agencia - pago.monto_owner,
-        created_at: new Date(),
-      },
-    ]);
-
-    alert("✅ Comprobante verificado y registrado en balances.");
-  } else {
-    alert("❌ Comprobante rechazado.");
+  if (error) {
+    console.error("verify_pending_payment:", error.message);
+    feedback.value = error.message?.includes("ALREADY_PROCESSED")
+      ? "Este comprobante ya fue procesado."
+      : "No se pudo actualizar el comprobante.";
+    return;
   }
 
   selectedPago.value = null;

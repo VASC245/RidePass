@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Frontend (lint + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx eslint src --max-warnings=0
+      - run: npx vite build
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-placeholder
+      - name: Tamaño del bundle
+        run: du -sh dist && ls -la dist/assets | sort -k5 -n -r | head -8
+
+  functions:
+    name: Edge functions (deno check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - run: deno check supabase/functions/public-reserve/index.ts supabase/functions/kushki-charge/index.ts supabase/functions/send-ticket/index.ts
+      - run: deno lint supabase/functions
+
+  database:
+    name: Base de datos (migraciones + pgTAP)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Fijado: 2.117.0 referencia una imagen de storage-api inexistente
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+      - name: Levantar Postgres local y aplicar todas las migraciones
+        run: supabase db start
+      - name: Pruebas pgTAP
+        run: supabase test db
+      - name: Lint de funciones plpgsql
+        run: supabase db lint --level warning

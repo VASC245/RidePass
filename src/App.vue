@@ -3,26 +3,24 @@
 </template>
 
 <script setup>
-import { onMounted } from "vue";
+import { watch } from "vue";
 import { useAuthStore } from "@/stores/authStore";
-import { useRouter } from "vue-router";
+import { useRouter, useRoute } from "vue-router";
+import { homeFor } from "@/router";
 
 const authStore = useAuthStore();
-const router = useRouter();
+const router    = useRouter();
+const route     = useRoute();
 
-onMounted(async () => {
-  await authStore.init();
+// Si el usuario ya tiene sesión y cae en una página de login/registro,
+// se le manda a su inicio.
+const AUTH_ROUTES = ["/panel/login", "/panel/register", "/cuenta/login", "/cuenta/registro"];
 
-  if (authStore.user) {
-    if (authStore.user.role === "dueño") {
-      router.push("/dashboard");
-    } else if (authStore.user.role === "agencia") {
-      router.push("/tours-disponibles");
-    } else if (authStore.user.role === "conductor") {
-      router.push("/mis-tours"); // 🔹 redirige al panel del conductor
-    }
-  } else {
-    router.push("/login");
-  }
-});
+watch(
+  () => [authStore.ready, authStore.user?.role, route.path],
+  ([ready, role, path]) => {
+    if (ready && role && AUTH_ROUTES.includes(path)) router.replace(homeFor(role));
+  },
+  { immediate: true },
+);
 </script>
