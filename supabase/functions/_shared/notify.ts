@@ -34,7 +34,9 @@ export interface TicketInfo {
   date: string | Date
   seats?: number[]
   quantity: number
-  amount: number
+  amount: number         // total pagado por el comprador (incluye cargo por servicio)
+  subtotal?: number      // precio del vendedor
+  fee?: number           // cargo por servicio al comprador
   paymentLabel: string   // "Tarjeta · 123456" | "Transferencia · TRX-1" | "Efectivo"
   ticketUrl: string
 }
@@ -56,6 +58,10 @@ export function ticketEmail(t: TicketInfo): { subject: string; html: string } {
     t.kind === "tour" && t.seats?.length
       ? ["Asientos", t.seats.join(", ")]
       : ["Entradas", String(t.quantity)],
+    ...(t.fee && t.fee > 0
+      ? [[t.kind === "tour" ? "Asientos" : "Entradas", money(t.subtotal ?? t.amount - t.fee)] as [string, string],
+         ["Cargo por servicio", money(t.fee)] as [string, string]]
+      : []),
     ["Total", money(t.amount)],
     ["Pago", t.paymentLabel],
   ]
