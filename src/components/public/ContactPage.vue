@@ -50,7 +50,7 @@
           <!-- Testimonial — oculto en móvil -->
           <div class="contact-testimonial">
             <p class="t-text">
-              "Con ChivaPass vendemos más boletos en línea sin filas
+              "Con chivaspass vendemos más boletos en línea sin filas
               ni complicaciones. Nuestros clientes reciben su QR al instante."
             </p>
             <div class="flex items-center gap-3 mt-3">
@@ -161,7 +161,7 @@
               </button>
 
               <p class="form-note">
-                Al enviar, aceptas que ChivaPass te contacte con información sobre la plataforma.
+                Al enviar, aceptas que chivaspass te contacte con información sobre la plataforma.
                 Nunca compartimos tus datos con terceros.
               </p>
             </form>
@@ -175,7 +175,7 @@
               Gracias por contactarnos. Nuestro equipo revisará tu solicitud
               y te responderá en menos de 24 horas por WhatsApp o correo.
             </p>
-            <RouterLink to="/" class="success-cta">Explorar ChivaPass →</RouterLink>
+            <RouterLink to="/" class="success-cta">Explorar chivaspass</RouterLink>
           </div>
 
         </div>

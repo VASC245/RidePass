@@ -64,7 +64,7 @@
         <p>Cuenta: <strong>{{ bankInfo.account }}</strong></p>
         <p>Titular: <strong>{{ bankInfo.owner }}</strong></p>
         <p>Monto: <strong class="text-orange-700">${{ pendingPlan.price }}/mes</strong></p>
-        <p>Concepto: <strong>ChivaPass {{ pendingPlan.name }} - {{ user?.email }}</strong></p>
+        <p>Concepto: <strong>chivaspass {{ pendingPlan.name }} - {{ user?.email }}</strong></p>
       </div>
       <p class="text-xs text-blue-500">Una vez verificado activaremos tu plan en menos de 24h. <br>WhatsApp: <strong>{{ bankInfo.whatsapp }}</strong></p>
       <button @click="pendingPlan = null" class="text-sm text-gray-400 hover:underline">Cancelar</button>

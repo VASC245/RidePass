@@ -48,6 +48,13 @@ serve(async (req) => {
     const proofPath   = String(payload.proofPath ?? "").trim()
     const hasProof    = Boolean(proofNumber && proofPath && proofPath.startsWith("comprobantes/"))
 
+    // El comprobante debe existir en el bucket y no haberse usado en otra
+    // reserva: sin esto se podían bloquear asientos con rutas inventadas.
+    if (hasProof) {
+      const check = await validateProof(supabase, proofPath)
+      if (check) return json({ success: false, message: check }, 400)
+    }
+
     // ══════════════════ TOUR EN CHIVA ══════════════════
     if (type === "tour") {
       const seats    = parseSeats(payload.seats)
@@ -193,6 +200,20 @@ serve(async (req) => {
     return json({ success: false, message: "Error interno al procesar la reserva." }, 500)
   }
 })
+
+// Devuelve un mensaje de error si el comprobante no es válido, o null si lo es.
+// deno-lint-ignore no-explicit-any
+async function validateProof(supabase: any, proofPath: string): Promise<string | null> {
+  if (proofPath.length > 200 || proofPath.includes("..")) return "Ruta del comprobante inválida."
+  const { error } = await supabase.storage.from("comprobantes").createSignedUrl(proofPath, 60)
+  if (error) return "No encontramos el archivo del comprobante. Súbelo de nuevo."
+  const [pp, bt] = await Promise.all([
+    supabase.from("pending_payments").select("id").eq("comprobante_path", proofPath).limit(1),
+    supabase.from("business_tickets").select("id").eq("payment_proof_path", proofPath).limit(1),
+  ])
+  if (pp.data?.length || bt.data?.length) return "Este comprobante ya fue usado en otra reserva."
+  return null
+}
 
 // Lee el JWT del usuario (si lo hay) y devuelve su rol desde public.users.
 // deno-lint-ignore no-explicit-any

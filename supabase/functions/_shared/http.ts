@@ -1,19 +1,28 @@
 // Utilidades HTTP compartidas por las edge functions.
 
+// Orígenes por defecto si el secret ALLOWED_ORIGINS no está configurado:
+// producción, previews de Netlify y el dev server local. Nunca se refleja
+// un origen arbitrario.
+//   supabase secrets set ALLOWED_ORIGINS=https://tudominio.com,http://localhost:5173
+const DEFAULT_ORIGINS = ["https://chivaspass.netlify.app", "http://localhost:5173"]
+const PREVIEW_RE = /^https:\/\/[a-z0-9-]+--chivaspass\.netlify\.app$/
+
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean)
+const ORIGINS = ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : DEFAULT_ORIGINS
 
-// Devuelve las cabeceras CORS para la petición. Si ALLOWED_ORIGINS está
-// configurado, solo se aceptan esos orígenes; si no, se refleja el origen
-// (útil en desarrollo). Configurar en producción:
-//   supabase secrets set ALLOWED_ORIGINS=https://tudominio.com,http://localhost:5173
+export function originAllowed(origin: string): boolean {
+  return ORIGINS.includes(origin) || PREVIEW_RE.test(origin)
+}
+
+// Devuelve las cabeceras CORS para la petición.
 export function corsFor(req: Request): Record<string, string> {
   const origin = req.headers.get("origin") ?? ""
-  const allowed = ALLOWED_ORIGINS.length === 0 || ALLOWED_ORIGINS.includes(origin)
+  const allowed = originAllowed(origin)
   return {
-    "Access-Control-Allow-Origin": allowed ? (origin || "*") : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Origin": allowed ? origin : ORIGINS[0],
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Vary": "Origin",

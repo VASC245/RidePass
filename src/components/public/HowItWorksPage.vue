@@ -4,7 +4,7 @@
     <!-- Cabecera -->
     <header class="border-b border-gray-100 bg-gray-50">
       <div class="max-w-3xl mx-auto px-4 sm:px-6 pt-12 pb-10 text-center">
-        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Cómo funciona ChivaPass</h1>
+        <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 tracking-tight">Cómo funciona chivaspass</h1>
         <p class="mt-3 text-gray-600 leading-relaxed">
           Una sola plataforma para comprar entradas de tours en chiva y atracciones de Baños, y para que los negocios locales las vendan sin intermediarios.
         </p>
@@ -204,7 +204,7 @@ const faqs = [
     a: 'Sí, puedes comprar como invitado. Con una cuenta gratuita, además, guardas todas tus entradas en un solo lugar y las recuperas cuando quieras.',
   },
   {
-    q: '¿Cuánto cuesta vender en ChivaPass?',
+    q: '¿Cuánto cuesta vender en chivaspass?',
     a: 'El registro de chivas y negocios es directo desde el panel. Escríbenos desde la página de contacto y te explicamos los planes disponibles.',
   },
 ]

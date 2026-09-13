@@ -28,7 +28,7 @@
 
           <div class="mt-5 bg-gray-50 border border-gray-200 rounded-xl p-4">
             <p class="text-sm text-gray-700">
-              Esta atracción todavía no vende entradas en ChivaPass. Puedes visitarla y pagar en el lugar.
+              Esta atracción todavía no vende entradas en chivaspass. Puedes visitarla y pagar en el lugar.
             </p>
           </div>
 

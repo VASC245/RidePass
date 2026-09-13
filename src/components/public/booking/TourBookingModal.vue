@@ -136,7 +136,7 @@
                   <p>Tipo: <strong>Cuenta {{ bankInfo.type }}</strong></p>
                   <p>Cuenta: <strong>{{ bankInfo.account }}</strong></p>
                   <p>Titular: <strong>{{ bankInfo.owner }}</strong></p>
-                  <p>Concepto: <strong>ChivaPass, {{ tour.title }}</strong></p>
+                  <p>Concepto: <strong>chivaspass, {{ tour.title }}</strong></p>
                   <p>Monto: <strong class="text-orange-700">${{ subtotal }}</strong></p>
                   <p v-if="bankInfo.notes" class="mt-2 text-xs text-gray-500">{{ bankInfo.notes }}</p>
                 </div>
@@ -362,7 +362,7 @@ const whatsAppUrl = computed(() => {
     `Total: $${subtotal.value}`,
     ticketUrl.value ? `\nVer mi código QR:\n${ticketUrl.value}` : '',
     ``,
-    `ChivaPass · Baños de Agua Santa`,
+    `chivaspass · Baños de Agua Santa`,
   ].join('\n')
   return `https://wa.me/?text=${encodeURIComponent(msg)}`
 })

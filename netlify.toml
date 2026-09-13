@@ -3,13 +3,21 @@
   command = "npm run build"
   publish = "dist"
 
+# Proyecto de Supabase de producción (cyyzudhjpifpbpeiebsn). La URL y la
+# clave anon son públicas por diseño (van en el bundle). Se fijan aquí porque
+# las variables de la interfaz de Netlify apuntaban a un proyecto borrado
+# (vpozfacilejszlhghnci) y el sitio no podía cargar nada. netlify.toml tiene
+# prioridad sobre las variables de la interfaz.
 [build.environment]
   NODE_VERSION = "22"
+  VITE_SUPABASE_URL = "https://cyyzudhjpifpbpeiebsn.supabase.co"
+  VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5eXp1ZGhqcGlmcGJwZWllYnNuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0ODcxNTAsImV4cCI6MjA5NTA2MzE1MH0.AJTmYJid24Fq_lfR8vZcrCbcQbESCWQXhGQ8zhkwkIA"
+  VITE_PUBLIC_APP_NAME = "chivaspass"
 
 [build.secrets_scan]
   enabled = true
   omit_keys = [
     "VITE_SUPABASE_URL",
     "VITE_SUPABASE_ANON_KEY",
-    "VITE_BUCKET_ASERRIN"
+    "VITE_PUBLIC_APP_NAME"
   ]

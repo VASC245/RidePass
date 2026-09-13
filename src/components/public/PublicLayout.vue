@@ -97,7 +97,7 @@
           </ul>
         </div>
         <div>
-          <h4 class="text-white font-bold mb-4 text-sm">Vende con ChivaPass</h4>
+          <h4 class="text-white font-bold mb-4 text-sm">Vende con chivaspass</h4>
           <ul class="space-y-2.5 text-sm">
             <li><RouterLink to="/panel/login" class="footer-link">Registra tu chiva</RouterLink></li>
             <li><RouterLink to="/panel/login" class="footer-link">Afilia tu negocio</RouterLink></li>
@@ -118,7 +118,7 @@
         </div>
       </div>
       <div class="max-w-7xl mx-auto border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-600">
-        <p>© 2026 ChivaPass. Baños de Agua Santa, Ecuador.</p>
+        <p>© 2026 chivaspass. Baños de Agua Santa, Ecuador.</p>
         <p>Turismo local, venta directa.</p>
       </div>
     </footer>
