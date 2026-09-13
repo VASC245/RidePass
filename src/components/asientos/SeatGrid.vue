@@ -72,7 +72,7 @@ const loadSeats = async () => {
   try {
     const { data, error } = await supabase
       .from("seats")
-      .select("*")
+      .select("id, assigned_chiva_id, seat_number, status")
       .eq("assigned_chiva_id", props.assignedChivaId)
       .order("seat_number", { ascending: true });
 

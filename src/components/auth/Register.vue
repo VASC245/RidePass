@@ -77,7 +77,7 @@
             type="text"
             required
             autocomplete="off"
-            placeholder="Código entregado por ChivaPass"
+            placeholder="Código entregado por chivaspass"
             class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
           />
           <p class="text-xs text-gray-500 mt-1">

@@ -3,7 +3,7 @@
 // public-reserve y kushki-charge después de registrar la venta.
 //
 // Secrets necesarios:
-//   RESEND_API_KEY, RESEND_FROM (ej. "ChivaPass <noreply@smartchiva.com>")
+//   RESEND_API_KEY, RESEND_FROM (ej. "chivaspass <noreply@smartchiva.com>")
 //   TWILIO_SID, TWILIO_TOKEN, TWILIO_WHATSAPP_FROM (ej. "whatsapp:+14155238886")
 // Si falta alguno, la notificación se omite y se registra en el log; la
 // venta nunca falla por una notificación.
@@ -97,7 +97,7 @@ export function ticketEmail(t: TicketInfo): { subject: string; html: string } {
 
 export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   const key  = Deno.env.get("RESEND_API_KEY")
-  const from = Deno.env.get("RESEND_FROM") ?? "ChivaPass <noreply@smartchiva.com>"
+  const from = Deno.env.get("RESEND_FROM") ?? "chivaspass <noreply@smartchiva.com>"
   if (!key) { console.warn("[notify] RESEND_API_KEY no configurado; correo omitido"); return false }
   try {
     const res = await fetch("https://api.resend.com/emails", {

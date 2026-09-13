@@ -1,7 +1,7 @@
 -- Pruebas pgTAP de la lógica crítica de ventas.
 -- Se ejecutan con `supabase test db` (local o CI) sobre las migraciones.
 BEGIN;
-SELECT plan(22);
+SELECT plan(34);
 
 -- ───────────── Datos de prueba ─────────────
 -- Usuarios en auth.users: el trigger handle_new_user crea public.users.
@@ -128,6 +128,67 @@ SELECT set_config('request.jwt.claims', '{"email":"ANA@test.local","role":"authe
 SELECT is((SELECT count(*) FROM public.get_my_tickets()), 2::bigint,
   'Mezcla entradas de atracciones y tours, sin distinguir mayúsculas en el correo');
 SELECT set_config('request.jwt.claims', NULL, true);
+
+-- ───────────── RLS cruzada (migración cerrar_fugas) ─────────────
+-- Conductor real y un negocio ajeno para las pruebas.
+INSERT INTO auth.users (id, email, raw_user_meta_data, instance_id, aud, role, encrypted_password, created_at, updated_at)
+VALUES ('00000000-0000-0000-0000-00000000aa06', 'conductor@test.local', '{"full_name":"Chofer Test","role":"conductor"}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now());
+INSERT INTO public.businesses (id, owner_id, name, category)
+VALUES ('00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-00000000aa02', 'Negocio Ajeno', 'otro');
+
+SET LOCAL ROLE authenticated;
+
+-- aa03 es agencia: intenta usar el tour y la chiva del dueño aa05
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa03","role":"authenticated"}', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.assigned_chivas (tour_id, chiva_id, departure_at, owner_id)
+     VALUES ('00000000-0000-0000-0000-00000000dd01', '00000000-0000-0000-0000-00000000cc01', now() + interval '3 days', '00000000-0000-0000-0000-00000000aa03') $$,
+  '42501', NULL, 'Nadie programa salidas con tours o chivas ajenas');
+SELECT throws_ok(
+  $$ INSERT INTO public.drivers (user_id, full_name, email, chiva_id, owner_id)
+     VALUES ('00000000-0000-0000-0000-00000000aa03', 'Pirata', 'pirata@test.local', '00000000-0000-0000-0000-00000000cc01', '00000000-0000-0000-0000-00000000aa03') $$,
+  '42501', NULL, 'Nadie se autoasigna como conductor de una chiva ajena');
+SELECT throws_ok(
+  $$ INSERT INTO public.businesses (owner_id, name, category, active)
+     VALUES ('00000000-0000-0000-0000-00000000aa03', 'Negocio Falso', 'otro', true) $$,
+  '42501', NULL, 'Solo el rol negocio crea fichas de negocio');
+SELECT is((SELECT count(*) FROM public.users WHERE role = 'conductor'), 0::bigint,
+  'Un usuario que no es dueño no ve conductores');
+
+-- aa05 es dueño real
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa05","role":"authenticated"}', true);
+SELECT lives_ok(
+  $$ INSERT INTO public.assigned_chivas (tour_id, chiva_id, departure_at, owner_id)
+     VALUES ('00000000-0000-0000-0000-00000000dd01', '00000000-0000-0000-0000-00000000cc01', now() + interval '3 days', '00000000-0000-0000-0000-00000000aa05') $$,
+  'El dueño sí programa salidas con su tour y su chiva');
+SELECT throws_ok(
+  $$ INSERT INTO public.drivers (user_id, full_name, email, chiva_id, owner_id)
+     VALUES ('00000000-0000-0000-0000-00000000aa02', 'Agencia', 'agencia@test.local', '00000000-0000-0000-0000-00000000cc01', '00000000-0000-0000-0000-00000000aa05') $$,
+  '42501', NULL, 'No se puede asignar como conductor a quien no tiene ese rol');
+SELECT lives_ok(
+  $$ INSERT INTO public.drivers (user_id, full_name, email, chiva_id, owner_id)
+     VALUES ('00000000-0000-0000-0000-00000000aa06', 'Chofer Test', 'conductor@test.local', '00000000-0000-0000-0000-00000000cc01', '00000000-0000-0000-0000-00000000aa05') $$,
+  'El dueño asigna a un conductor real a su chiva');
+SELECT is((SELECT email FROM public.find_conductor('CONDUCTOR@test.local')), 'conductor@test.local',
+  'find_conductor encuentra por correo exacto sin distinguir mayúsculas');
+SELECT is((SELECT count(*) FROM public.users WHERE role = 'conductor'), 0::bigint,
+  'El dueño tampoco lista conductores directamente');
+
+-- aa04 es negocio: intenta publicar bajo la ficha de otro negocio
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa04","role":"authenticated"}', true);
+SELECT throws_ok(
+  $$ INSERT INTO public.business_events (business_id, owner_id, title, price, capacity, event_date)
+     VALUES ('00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-00000000aa04', 'Evento Falso', 1, 1, now() + interval '1 day') $$,
+  '42501', NULL, 'Un negocio no publica eventos bajo la ficha de otro');
+
+-- anon: mapa de asientos sí, identificadores de venta no
+SET LOCAL ROLE anon;
+SELECT set_config('request.jwt.claims', NULL, true);
+SELECT throws_ok($$ SELECT sale_id FROM public.seats LIMIT 1 $$, '42501', NULL,
+  'Anon no puede leer sale_id de seats');
+SELECT lives_ok($$ SELECT seat_number, status FROM public.seats LIMIT 1 $$,
+  'Anon sí ve el mapa de asientos');
+RESET ROLE;
 
 SELECT * FROM finish();
 ROLLBACK;
