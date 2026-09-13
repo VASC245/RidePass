@@ -205,7 +205,7 @@ const faqs = [
   },
   {
     q: '¿Cuánto cuesta vender en chivaspass?',
-    a: 'El registro de chivas y negocios es directo desde el panel. Escríbenos desde la página de contacto y te explicamos los planes disponibles.',
+    a: 'El vendedor paga una suscripción mensual fija y recibe el precio íntegro de cada venta. En las compras por la web, el comprador paga un cargo por servicio del 8 % más $0,30 por ticket, que se muestra antes de pagar. Las ventas en efectivo y las de promotores no llevan cargo.',
   },
 ]
 </script>

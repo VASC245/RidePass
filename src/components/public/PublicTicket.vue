@@ -73,6 +73,16 @@
               <span class="text-gray-500">{{ isTour ? 'Asientos' : 'Entradas' }}</span>
               <strong class="text-gray-900 text-right">{{ isTour ? seatList : ticket.quantity }}</strong>
             </div>
+            <template v-if="Number(ticket.fee) > 0">
+              <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
+                <span class="text-gray-500">{{ isTour ? 'Asientos' : 'Entradas' }}</span>
+                <strong class="text-gray-900">${{ Number(ticket.subtotal).toFixed(2) }}</strong>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-500">Cargo por servicio</span>
+                <strong class="text-gray-900">${{ Number(ticket.fee).toFixed(2) }}</strong>
+              </div>
+            </template>
             <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
               <span class="text-gray-500">Total pagado</span>
               <strong class="text-orange-700">${{ Number(ticket.total).toFixed(2) }}</strong>

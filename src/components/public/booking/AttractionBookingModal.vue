@@ -64,8 +64,8 @@
                 <button @click="qty = Math.min(selectedEvent.capacity, qty + 1)"
                   class="w-10 h-10 rounded-[10px] bg-white border border-gray-300 text-xl font-bold hover:bg-gray-50 transition flex items-center justify-center">+</button>
                 <div class="flex-1 text-right">
-                  <p class="text-xs text-gray-400">Total</p>
-                  <p class="text-2xl font-extrabold text-gray-900">${{ subtotal }}</p>
+                  <p class="text-xs text-gray-400">Total con cargo por servicio</p>
+                  <p class="text-2xl font-extrabold text-gray-900">${{ total }}</p>
                 </div>
               </div>
               <button @click="step = 2" class="btn-primary mt-4 w-full">Continuar</button>
@@ -98,9 +98,11 @@
               <div class="flex justify-between"><span>Evento</span><strong class="text-gray-900">{{ selectedEvent?.title }}</strong></div>
               <div class="flex justify-between"><span>Fecha</span><strong class="text-gray-900">{{ formatHour(selectedEvent?.event_date) }}</strong></div>
               <div class="flex justify-between"><span>Entradas</span><strong class="text-gray-900">{{ qty }}</strong></div>
+              <div class="flex justify-between pt-2 border-t border-gray-200"><span>Entradas</span><strong class="text-gray-900">${{ subtotal }}</strong></div>
+              <div class="flex justify-between"><span>Cargo por servicio</span><strong class="text-gray-900">${{ money(fee) }}</strong></div>
               <div class="flex justify-between pt-2 border-t border-gray-200">
                 <span class="font-bold text-gray-900">Total</span>
-                <strong class="text-orange-700 text-base">${{ subtotal }}</strong>
+                <strong class="text-orange-700 text-base">${{ total }}</strong>
               </div>
             </div>
 
@@ -147,7 +149,7 @@
                 <p>Tipo: <strong>Cuenta {{ bankInfo.type }}</strong></p>
                 <p>Cuenta: <strong>{{ bankInfo.account }}</strong></p>
                 <p>Titular: <strong>{{ bankInfo.owner }}</strong></p>
-                <p>Monto: <strong class="text-orange-700">${{ subtotal }}</strong></p>
+                <p>Monto a transferir: <strong class="text-orange-700">${{ total }}</strong> <span class="text-xs text-gray-500">(incluye ${{ money(fee) }} de cargo por servicio)</span></p>
                 <p v-if="bankInfo.notes" class="mt-2 text-xs text-gray-500">{{ bankInfo.notes }}</p>
               </div>
               <div>
@@ -210,8 +212,8 @@
                 </div>
 
                 <div class="bg-gray-50 rounded-xl p-4 text-sm flex items-center justify-between">
-                  <span class="text-gray-600">Total a cobrar</span>
-                  <strong class="text-orange-700 text-base">${{ subtotal }}</strong>
+                  <span class="text-gray-600">Total a cobrar <span class="text-xs text-gray-400">(incluye cargo por servicio)</span></span>
+                  <strong class="text-orange-700 text-base">${{ total }}</strong>
                 </div>
 
                 <p v-if="cardError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ cardError }}</p>
@@ -219,7 +221,7 @@
                 <div class="flex gap-3 pt-1">
                   <button @click="step = 2" class="btn-secondary flex-1">Volver</button>
                   <button @click="payWithCard" :disabled="charging || !salesOpenNow" class="btn-primary flex-[2] disabled:opacity-50">
-                    {{ charging ? 'Procesando pago...' : `Pagar $${subtotal}` }}
+                    {{ charging ? 'Procesando pago...' : `Pagar $${total}` }}
                   </button>
                 </div>
                 <p class="text-xs text-gray-400 text-center">Pago procesado por Kushki. Los datos de tu tarjeta nunca pasan por nuestros servidores.</p>
@@ -256,7 +258,7 @@
               <div class="flex justify-between text-gray-600"><span>Negocio</span><strong class="text-gray-900">{{ biz?.name }}</strong></div>
               <div class="flex justify-between text-gray-600"><span>Evento</span><strong class="text-gray-900">{{ selectedEvent?.title }}</strong></div>
               <div class="flex justify-between text-gray-600"><span>Entradas</span><strong class="text-gray-900">{{ qty }}</strong></div>
-              <div class="flex justify-between text-gray-600 pt-2 border-t border-gray-100"><span>Total</span><strong class="text-orange-700">${{ subtotal }}</strong></div>
+              <div class="flex justify-between text-gray-600 pt-2 border-t border-gray-100"><span>Total pagado</span><strong class="text-orange-700">${{ paidTotal }}</strong></div>
             </div>
 
             <a v-if="ticketUrl" :href="whatsAppUrl" target="_blank"
@@ -280,6 +282,7 @@ import QRCode from 'qrcode'
 import { supabase } from '@/lib/supabase'
 import { kushkiEnabled, tokenizeCard } from '@/lib/kushki'
 import { reserveEvent, chargeCard, sellerPaymentInfo } from '@/lib/reservations'
+import { platformFee, money } from '@/lib/fees'
 import {
   PhX, PhCheck, PhBank, PhCreditCard, PhPaperclip, PhCheckCircle, PhWhatsappLogo,
 } from '@phosphor-icons/vue'
@@ -367,13 +370,18 @@ const loadSellerSettings = async (ownerId) => {
 const subtotal = computed(() =>
   selectedEvent.value ? (qty.value * Number(selectedEvent.value.price)).toFixed(2) : '0.00'
 )
+// Cargo por servicio al comprador (el valor definitivo lo calcula el servidor)
+const fee = computed(() => platformFee(subtotal.value))
+const total = computed(() => money(Number(subtotal.value) + fee.value))
+const serverTotal = ref(null)
+const paidTotal = computed(() => serverTotal.value != null ? money(serverTotal.value) : total.value)
 
 const whatsAppUrl = computed(() => {
   if (!ticketUrl.value) return '#'
   const msg = [
     `Mi entrada para ${selectedEvent.value?.title ?? ''}`,
     `${selectedEvent.value?.event_date ? new Date(selectedEvent.value.event_date).toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''}`,
-    `${qty.value} entrada(s) · $${subtotal.value}`,
+    `${qty.value} entrada(s) · $${paidTotal.value}`,
     ``,
     `Ver mi código QR:`,
     ticketUrl.value,
@@ -419,6 +427,7 @@ const showResult = async (data) => {
   qrUrl.value        = await QRCode.toDataURL(data.qrPayload, { width: 320, margin: 1 })
   ticketUrl.value    = data.ticketUrl || `${window.location.origin}/ticket/${data.ticketId}`
   resultStatus.value = data.status || 'pagado'
+  serverTotal.value = data.total ?? null
   step.value = 4
 }
 
@@ -471,7 +480,7 @@ const payWithCard = async () => {
   }
   charging.value = true
   try {
-    const token = await tokenizeCard({ name, number, expiry, cvv, amount: Number(subtotal.value) })
+    const token = await tokenizeCard({ name, number, expiry, cvv, amount: Number(total.value) })
     const data = await chargeCard(supabase, 'business', token, {
       eventId: selectedEvent.value.id,
       quantity: qty.value,

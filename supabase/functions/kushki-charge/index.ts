@@ -110,7 +110,9 @@ serve(async (req) => {
     // ── 2. Reservar en BD (pendiente) ──
     let reservation: Record<string, unknown> | null = null
     let ticketId = ""
-    let amount = 0
+    let amount = 0      // total cobrado al comprador (precio + cargo por servicio)
+    let subtotal = 0    // precio del vendedor
+    let fee = 0
 
     if (kind === "tour") {
       const { data, error } = await supabase.rpc("reserve_tour_seats", {
@@ -129,7 +131,9 @@ serve(async (req) => {
       }
       reservation = data
       ticketId = String(data.sale_id)
-      amount = Number(data.amount)
+      subtotal = Number(data.amount)
+      fee = Number(data.fee ?? 0)
+      amount = Number(data.total_charged ?? data.amount)
     } else {
       const { data, error } = await supabase.rpc("create_business_ticket", {
         p_event_id:     String(payload.eventId),
@@ -146,7 +150,9 @@ serve(async (req) => {
       }
       reservation = data
       ticketId = String(data.ticket_id)
-      amount = Number(data.amount)
+      subtotal = Number(data.amount)
+      fee = Number(data.fee ?? 0)
+      amount = Number(data.total_charged ?? data.amount)
     }
 
     await setSession({ ticket_id: ticketId, amount })
@@ -213,13 +219,13 @@ serve(async (req) => {
           kind: "tour", status: "pagado", customer,
           title: String(reservation!.tour_title), place: String(reservation!.chiva_name),
           date: String(reservation!.departure_at), seats: seats!, quantity: seats!.length,
-          amount, paymentLabel: `Tarjeta · ${chargeId || "Kushki"}`, ticketUrl,
+          amount, subtotal, fee, paymentLabel: `Tarjeta · ${chargeId || "Kushki"}`, ticketUrl,
         }
       : {
           kind: "business", status: "pagado", customer,
           title: String(reservation!.event_title), place: String(reservation!.business_name),
           date: String(reservation!.event_date), quantity: qty,
-          amount, paymentLabel: `Tarjeta · ${chargeId || "Kushki"}`, ticketUrl,
+          amount, subtotal, fee, paymentLabel: `Tarjeta · ${chargeId || "Kushki"}`, ticketUrl,
         }
     await notifyAll(supabase, String(reservation!.owner_id), info)
 
@@ -228,7 +234,9 @@ serve(async (req) => {
       saleId:   kind === "tour" ? ticketId : undefined,
       ticketId: kind === "business" ? ticketId : undefined,
       chargeId,
-      amount,
+      amount: subtotal,
+      fee,
+      total: amount,
       qrPayload: reservation!.qr_payload,
       ticketUrl,
     })
