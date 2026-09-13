@@ -131,7 +131,7 @@ const handleScan = async (qrText) => {
 };
 
 // Sonido
-const beep = typeof Audio !== "undefined" ? new Audio("/beep.mp3") : null;
+const beep = typeof Audio !== "undefined" ? new Audio("/beep.wav") : null;
 const playBeep = async () => {
   if (!beep) return;
   try {

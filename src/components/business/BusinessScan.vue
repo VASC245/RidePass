@@ -6,7 +6,7 @@
     <div class="bg-black rounded-2xl overflow-hidden aspect-square relative">
       <video ref="videoEl" class="w-full h-full object-cover" playsinline autoplay muted></video>
       <canvas ref="canvasEl" class="hidden"></canvas>
-      <div class="absolute inset-0 border-4 border-purple-400 rounded-2xl pointer-events-none opacity-50"></div>
+      <div class="absolute inset-0 border-4 border-orange-400 rounded-2xl pointer-events-none opacity-50"></div>
       <p v-if="!scanning" class="absolute inset-0 flex items-center justify-center text-white text-sm font-semibold bg-black/60 rounded-2xl">
         Presiona "Iniciar" para abrir la cámara
       </p>
@@ -15,7 +15,7 @@
     <button
       @click="scanning ? stopScan() : startScan()"
       class="w-full py-3 rounded-xl font-bold text-white transition"
-      :class="scanning ? 'bg-red-500 hover:bg-red-600' : 'bg-purple-600 hover:bg-purple-700'"
+      :class="scanning ? 'bg-red-500 hover:bg-red-600' : 'bg-orange-600 hover:bg-orange-700'"
     >
       {{ scanning ? 'Detener cámara' : 'Iniciar escaneo' }}
     </button>
@@ -28,7 +28,7 @@
         :class="result.ok ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-400'"
       >
         <p class="text-xl font-extrabold mb-2" :class="result.ok ? 'text-green-700' : 'text-red-600'">
-          {{ result.ok ? '✓ ENTRADA VÁLIDA' : '✗ ENTRADA INVÁLIDA' }}
+          {{ result.ok ? 'Entrada válida' : 'Entrada inválida' }}
         </p>
         <template v-if="result.ticket">
           <p class="font-semibold text-gray-800">{{ result.ticket.customer_name }}</p>
@@ -44,8 +44,8 @@
     <div class="bg-white rounded-2xl shadow-sm border p-5 space-y-3">
       <p class="font-semibold text-gray-700 text-sm">Buscar por código manualmente</p>
       <div class="flex gap-2">
-        <input v-model="manualCode" type="text" placeholder="Pega el código QR aquí..." class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none" />
-        <button @click="verifyCode(manualCode)" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition">Verificar</button>
+        <input v-model="manualCode" type="text" placeholder="Pega el código QR aquí..." class="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-orange-500 focus:outline-none" />
+        <button @click="verifyCode(manualCode)" class="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2.5 rounded-xl font-semibold text-sm transition">Verificar</button>
       </div>
     </div>
   </div>

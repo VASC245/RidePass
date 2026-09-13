@@ -8,7 +8,7 @@
           :key="f.value"
           @click="activeFilter = f.value"
           class="px-4 py-2 rounded-xl text-sm font-semibold transition"
-          :class="activeFilter === f.value ? 'bg-purple-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-purple-400'"
+          :class="activeFilter === f.value ? 'bg-orange-600 text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-orange-400'"
         >{{ f.label }}</button>
       </div>
     </div>
@@ -47,17 +47,17 @@
               class="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 font-semibold"
             >Usado</span>
             <!-- Comprobante -->
-            <button v-if="tk.payment_proof_path || tk.payment_proof_url" @click="openProof(tk)" class="text-xs text-purple-600 hover:underline font-semibold">Ver comprobante</button>
+            <button v-if="tk.payment_proof_path || tk.payment_proof_url" @click="openProof(tk)" class="text-xs text-orange-600 hover:underline font-semibold">Ver comprobante</button>
           </div>
         </div>
 
         <!-- Acciones -->
         <div v-if="tk.payment_status === 'pendiente'" class="flex gap-2 mt-4">
           <button @click="setStatus(tk.id, 'verificado')" class="flex-1 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition">
-            ✓ Aprobar
+            Aprobar
           </button>
           <button @click="setStatus(tk.id, 'rechazado')" class="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition">
-            ✗ Rechazar
+            Rechazar
           </button>
         </div>
       </div>

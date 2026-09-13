@@ -8,7 +8,7 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-white rounded-2xl p-5 shadow-sm border">
         <p class="text-sm text-gray-500 font-medium">Eventos activos</p>
-        <p class="text-3xl font-extrabold text-purple-600 mt-1">{{ stats.activeEvents }}</p>
+        <p class="text-3xl font-extrabold text-orange-600 mt-1">{{ stats.activeEvents }}</p>
       </div>
       <div class="bg-white rounded-2xl p-5 shadow-sm border">
         <p class="text-sm text-gray-500 font-medium">Tickets vendidos</p>
@@ -29,7 +29,7 @@
       <h3 class="text-lg font-bold text-gray-700 mb-4">Próximos eventos</h3>
       <div v-if="loading" class="text-center py-8 text-gray-400">Cargando...</div>
       <div v-else-if="upcomingEvents.length === 0" class="text-center py-8 text-gray-400">
-        No hay eventos próximos. <RouterLink to="/panel/negocio-eventos" class="text-purple-600 font-semibold hover:underline">Crear uno</RouterLink>
+        No hay eventos próximos. <RouterLink to="/panel/negocio-eventos" class="text-orange-600 font-semibold hover:underline">Crear uno</RouterLink>
       </div>
       <div v-else class="space-y-3">
         <div

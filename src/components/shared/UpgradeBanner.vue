@@ -1,20 +1,19 @@
 <template>
   <div v-if="show"
     class="rounded-2xl border-2 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-    :class="urgency === 'warn' ? 'bg-yellow-50 border-yellow-300' : 'bg-indigo-50 border-indigo-300'"
+    :class="urgency === 'warn' ? 'bg-yellow-50 border-yellow-300' : 'bg-orange-50 border-orange-300'"
   >
     <div>
       <p class="font-bold text-gray-900 flex items-center gap-2">
-        <span>{{ urgency === 'warn' ? '⚠️' : '🚀' }}</span>
-        {{ title }}
+                {{ title }}
       </p>
       <p class="text-sm text-gray-500 mt-0.5">{{ subtitle }}</p>
     </div>
     <RouterLink to="/panel/planes"
       class="shrink-0 font-bold text-sm px-5 py-2.5 rounded-xl transition"
-      :class="urgency === 'warn' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'"
+      :class="urgency === 'warn' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white'"
     >
-      Ver planes →
+      Ver planes
     </RouterLink>
   </div>
 </template>
