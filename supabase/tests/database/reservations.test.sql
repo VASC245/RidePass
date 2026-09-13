@@ -1,7 +1,7 @@
 -- Pruebas pgTAP de la lógica crítica de ventas.
 -- Se ejecutan con `supabase test db` (local o CI) sobre las migraciones.
 BEGIN;
-SELECT plan(34);
+SELECT plan(37);
 
 -- ───────────── Datos de prueba ─────────────
 -- Usuarios en auth.users: el trigger handle_new_user crea public.users.
@@ -95,6 +95,14 @@ SELECT lives_ok(
   $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[1],
        '{"name":"Eva","email":"eva@test.local"}'::jsonb, NULL, 'pagado', 'efectivo', NULL) $$,
   'El dueño sí vende en efectivo aunque las ventas públicas estén cerradas');
+-- Saldo del dueño: la venta de Ana se confirmó y luego se canceló (neto 0);
+-- la venta en efectivo debe quedar registrada por el trigger.
+SELECT is((SELECT count(*) FROM public.owner_balance WHERE owner_id = '00000000-0000-0000-0000-00000000aa05'), 1::bigint,
+  'Solo la venta en efectivo queda en el saldo; la cancelada se revirtió');
+SELECT is((SELECT monto_total FROM public.owner_balance WHERE owner_id = '00000000-0000-0000-0000-00000000aa05'), 5::numeric,
+  'El saldo registra el monto de la venta en efectivo');
+SELECT is((SELECT payment_method FROM public.owner_balance WHERE owner_id = '00000000-0000-0000-0000-00000000aa05'), 'efectivo',
+  'El saldo guarda el método de pago');
 UPDATE public.assigned_chivas SET sales_open = true WHERE id = '00000000-0000-0000-0000-00000000ee01';
 
 INSERT INTO public.panel_settings (user_id, accept_transfers) VALUES ('00000000-0000-0000-0000-00000000aa05', false);
