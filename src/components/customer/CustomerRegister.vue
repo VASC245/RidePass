@@ -23,18 +23,18 @@
 
         <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{{ error }}</div>
         <div v-if="success" class="bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-3 font-semibold">
-          ✓ Cuenta creada. Ahora puedes iniciar sesión.
+          Cuenta creada. Ahora puedes iniciar sesión.
         </div>
 
         <button type="submit" :disabled="loading"
-          class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition">
-          {{ loading ? 'Creando cuenta...' : 'Crear cuenta →' }}
+          class="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition">
+          {{ loading ? 'Creando cuenta...' : 'Crear cuenta' }}
         </button>
       </form>
 
       <p class="text-center text-sm text-gray-500">
         ¿Ya tienes cuenta?
-        <RouterLink to="/cuenta/login" class="text-indigo-600 font-semibold hover:underline">Iniciar sesión</RouterLink>
+        <RouterLink to="/cuenta/login" class="text-orange-600 font-semibold hover:underline">Iniciar sesión</RouterLink>
       </p>
     </div>
   </div>
@@ -72,6 +72,6 @@ const register = async () => {
 
 <style scoped>
 .field-input { width:100%; padding:0.625rem 1rem; border:1px solid #d1d5db; border-radius:0.75rem; font-size:0.875rem; outline:none; }
-.field-input:focus { box-shadow:0 0 0 2px #6366f1; }
+.field-input:focus { box-shadow:0 0 0 2px #ea580c; }
 .field-label { display:block; font-size:0.75rem; font-weight:600; color:#374151; margin-bottom:0.25rem; }
 </style>

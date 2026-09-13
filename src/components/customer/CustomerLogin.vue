@@ -20,17 +20,17 @@
         <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{{ error }}</div>
 
         <button type="submit" :disabled="loading"
-          class="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition">
-          {{ loading ? 'Entrando...' : 'Ver mis entradas →' }}
+          class="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition">
+          {{ loading ? 'Entrando...' : 'Ver mis entradas' }}
         </button>
       </form>
 
       <p class="text-center text-sm text-gray-500">
         ¿Primera vez?
-        <RouterLink to="/cuenta/registro" class="text-indigo-600 font-semibold hover:underline">Crea tu cuenta</RouterLink>
+        <RouterLink to="/cuenta/registro" class="text-orange-600 font-semibold hover:underline">Crea tu cuenta</RouterLink>
       </p>
       <p class="text-center text-xs text-gray-400">
-        <RouterLink to="/" class="hover:underline">← Volver al inicio</RouterLink>
+        <RouterLink to="/" class="hover:underline">Volver al inicio</RouterLink>
       </p>
     </div>
   </div>
@@ -69,6 +69,6 @@ const login = async () => {
 
 <style scoped>
 .field-input { width:100%; padding:0.625rem 1rem; border:1px solid #d1d5db; border-radius:0.75rem; font-size:0.875rem; outline:none; }
-.field-input:focus { box-shadow:0 0 0 2px #6366f1; }
+.field-input:focus { box-shadow:0 0 0 2px #ea580c; }
 .field-label { display:block; font-size:0.75rem; font-weight:600; color:#374151; margin-bottom:0.25rem; }
 </style>

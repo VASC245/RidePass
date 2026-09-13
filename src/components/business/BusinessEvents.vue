@@ -2,8 +2,8 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <h2 class="text-2xl font-bold text-gray-800">Mis Eventos</h2>
-      <button @click="openNew" class="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition">
-        + Nuevo evento
+      <button @click="openNew" class="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl font-semibold text-sm transition">
+        Nuevo evento
       </button>
     </div>
 
@@ -35,7 +35,7 @@
             }"
           >{{ ev.status }}</span>
           <div class="flex gap-2">
-            <button @click="openEdit(ev)" class="text-xs text-purple-600 hover:underline font-semibold">Editar</button>
+            <button @click="openEdit(ev)" class="text-xs text-orange-600 hover:underline font-semibold">Editar</button>
             <button @click="deleteEvent(ev.id)" class="text-xs text-red-500 hover:underline font-semibold">Eliminar</button>
           </div>
         </div>
@@ -91,7 +91,7 @@
           <button @click="showModal = false" class="flex-1 py-2.5 rounded-xl border border-gray-300 text-gray-600 font-semibold text-sm hover:bg-gray-50">
             Cancelar
           </button>
-          <button @click="save" :disabled="saving" class="flex-1 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold text-sm transition">
+          <button @click="save" :disabled="saving" class="flex-1 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-semibold text-sm transition">
             {{ saving ? 'Guardando...' : 'Guardar' }}
           </button>
         </div>
@@ -190,7 +190,7 @@ const deleteEvent = async (id) => {
   outline: none;
 }
 .input-field:focus {
-  box-shadow: 0 0 0 2px #a855f7;
+  box-shadow: 0 0 0 2px #ea580c;
 }
 .label {
   display: block;

@@ -9,7 +9,7 @@
         <div class="flex items-center gap-3">
           <span v-if="user" class="text-sm text-gray-500 hidden sm:block">{{ user.full_name }}</span>
           <RouterLink v-if="!user" to="/cuenta/login"
-            class="text-sm font-semibold text-indigo-600 hover:underline">Iniciar sesión</RouterLink>
+            class="text-sm font-semibold text-orange-600 hover:underline">Iniciar sesión</RouterLink>
           <button v-else @click="logout"
             class="text-sm font-semibold text-gray-500 hover:text-red-500 transition border border-gray-200 rounded-lg px-3 py-1.5">
             Salir

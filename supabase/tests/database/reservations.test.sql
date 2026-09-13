@@ -1,7 +1,7 @@
 -- Pruebas pgTAP de la lógica crítica de ventas.
 -- Se ejecutan con `supabase test db` (local o CI) sobre las migraciones.
 BEGIN;
-SELECT plan(19);
+SELECT plan(22);
 
 -- ───────────── Datos de prueba ─────────────
 -- Usuarios en auth.users: el trigger handle_new_user crea public.users.
@@ -115,6 +115,19 @@ UPDATE public.tours SET active = false WHERE id = '00000000-0000-0000-0000-00000
 SELECT is(
   (SELECT count(*) FROM public.tours WHERE id = '00000000-0000-0000-0000-00000000dd01' AND public.seller_is_public(user_id) AND active), 0::bigint,
   'Un tour inactivo no cumple la condición de lectura pública');
+
+-- ───────────── Portal del cliente: get_my_tickets ─────────────
+-- Eva compró en efectivo un asiento del tour, que ahora está inactivo.
+-- Debe seguir viendo título y estado aunque la lectura pública lo oculte.
+SELECT set_config('request.jwt.claims', '{"email":"eva@test.local","role":"authenticated"}', true);
+SELECT is((SELECT count(*) FROM public.get_my_tickets()), 1::bigint,
+  'El cliente ve solo sus propias compras');
+SELECT is((SELECT title || '|' || status || '|' || kind FROM public.get_my_tickets()), 'Tour Test|verificado|tour',
+  'La compra de tour muestra título y estado normalizado aunque el tour esté inactivo');
+SELECT set_config('request.jwt.claims', '{"email":"ANA@test.local","role":"authenticated"}', true);
+SELECT is((SELECT count(*) FROM public.get_my_tickets()), 2::bigint,
+  'Mezcla entradas de atracciones y tours, sin distinguir mayúsculas en el correo');
+SELECT set_config('request.jwt.claims', NULL, true);
 
 SELECT * FROM finish();
 ROLLBACK;

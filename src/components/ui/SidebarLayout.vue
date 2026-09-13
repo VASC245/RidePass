@@ -15,19 +15,9 @@
           v-for="item in menuItems"
           :key="item.path"
           :to="item.path"
-          class="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200"
-          :class="[
-            user?.role === 'dueño'
-              ? 'hover:bg-green-50 text-gray-700'
-              : user?.role === 'conductor'
-              ? 'hover:bg-orange-50 text-gray-700'
-              : user?.role === 'negocio'
-              ? 'hover:bg-purple-50 text-gray-700'
-              : 'hover:bg-blue-50 text-gray-700'
-          ]"
+          class="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 hover:bg-gray-100 text-gray-700"
           active-class="bg-gray-200 text-gray-900 font-semibold shadow-sm"
         >
-          <span class="text-lg">➡️</span>
           <span>{{ item.label }}</span>
         </RouterLink>
       </nav>
@@ -35,18 +25,12 @@
       <!-- Footer -->
       <div class="border-t mt-6 pt-4">
         <p class="text-sm text-gray-500 mb-2 font-medium">
-          👤 {{ user?.full_name }}
+          {{ user?.full_name }}
         </p>
         <button
           @click="logout"
           class="w-full py-2 rounded-xl font-semibold transition-all shadow-sm"
-          :class="user?.role === 'dueño'
-            ? 'bg-green-600 hover:bg-green-700 text-white'
-            : user?.role === 'conductor'
-            ? 'bg-orange-600 hover:bg-orange-700 text-white'
-            : user?.role === 'negocio'
-            ? 'bg-purple-600 hover:bg-purple-700 text-white'
-            : 'bg-blue-600 hover:bg-blue-700 text-white'"
+          :class="'bg-gray-900 hover:bg-gray-800 text-white'"
         >
           Cerrar sesión
         </button>
@@ -68,9 +52,7 @@
             <button
               @click="mobileOpen = false"
               class="text-gray-600 text-2xl hover:text-red-500"
-            >
-              ✖
-            </button>
+            ><PhX :size="22" /></button>
           </div>
 
           <nav class="flex-1 space-y-2 overflow-y-auto">
@@ -90,13 +72,7 @@
             <button
               @click="logout"
               class="w-full py-2 rounded-lg font-semibold text-white transition-all"
-              :class="user?.role === 'dueño'
-                ? 'bg-green-600 hover:bg-green-700'
-                : user?.role === 'conductor'
-                ? 'bg-orange-600 hover:bg-orange-700'
-                : user?.role === 'negocio'
-                ? 'bg-purple-600 hover:bg-purple-700'
-                : 'bg-blue-600 hover:bg-blue-700'"
+              :class="'bg-gray-900 hover:bg-gray-800'"
             >
               Cerrar sesión
             </button>
@@ -124,10 +100,8 @@
         <!-- Botón menú móvil -->
         <button
           @click="mobileOpen = true"
-          class="md:hidden text-gray-600 focus:outline-none text-3xl"
-        >
-          ☰
-        </button>
+          class="md:hidden text-gray-600 focus:outline-none"
+        ><PhList :size="28" /></button>
       </header>
 
       <!-- Main -->
@@ -143,6 +117,7 @@ import { ref, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 import BrandLogo from "@/components/ui/BrandLogo.vue";
+import { PhList, PhX } from "@phosphor-icons/vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -162,15 +137,15 @@ const menuItems = computed(() => {
       { label: "Comprobantes",        path: "/panel/pagos" },
       { label: "Embarque (Escanear)", path: "/panel/embarque" },
       { label: "Mis Ventas",          path: "/panel/mis-ventas" },
-      { label: "⚙️ Configuración",   path: "/panel/configuracion" },
-      { label: "💎 Planes",          path: "/panel/planes" },
+      { label: "Configuración",   path: "/panel/configuracion" },
+      { label: "Planes",          path: "/panel/planes" },
     ];
   } else if (user.value?.role ==="agencia") {
     return [
       { label: "Tours Disponibles",  path: "/panel/tours-disponibles" },
       { label: "Vender Boletos",     path: "/panel/vender-boletos" },
-      { label: "⚙️ Configuración",  path: "/panel/configuracion" },
-      { label: "💎 Planes",         path: "/panel/planes" },
+      { label: "Configuración",   path: "/panel/configuracion" },
+      { label: "Planes",          path: "/panel/planes" },
     ];
   } else if (user.value?.role ==="conductor") {
     return [
@@ -184,8 +159,8 @@ const menuItems = computed(() => {
       { label: "Eventos",            path: "/panel/negocio-eventos" },
       { label: "Tickets",            path: "/panel/negocio-tickets" },
       { label: "Escanear QR",        path: "/panel/negocio-escanear" },
-      { label: "⚙️ Configuración",  path: "/panel/configuracion" },
-      { label: "💎 Planes",         path: "/panel/planes" },
+      { label: "Configuración",   path: "/panel/configuracion" },
+      { label: "Planes",          path: "/panel/planes" },
     ];
   }
   return [];
