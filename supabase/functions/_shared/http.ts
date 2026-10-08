@@ -1,10 +1,15 @@
 // Utilidades HTTP compartidas por las edge functions.
 
 // Orígenes por defecto si el secret ALLOWED_ORIGINS no está configurado:
-// producción, previews de Netlify y el dev server local. Nunca se refleja
-// un origen arbitrario.
-//   supabase secrets set ALLOWED_ORIGINS=https://tudominio.com,http://localhost:5173
-const DEFAULT_ORIGINS = ["https://chivaspass.netlify.app", "http://localhost:5173"]
+// el dominio en Cloudflare, el sitio de Netlify mientras dure la migración
+// y el dev server local. Nunca se refleja un origen arbitrario.
+//   supabase secrets set ALLOWED_ORIGINS=https://chivaspass.com,https://www.chivaspass.com
+const DEFAULT_ORIGINS = [
+  "https://chivaspass.com",
+  "https://www.chivaspass.com",
+  "https://chivaspass.netlify.app", // retirar cuando el dominio apunte a Cloudflare
+  "http://localhost:5173",
+]
 const PREVIEW_RE = /^https:\/\/[a-z0-9-]+--chivaspass\.netlify\.app$/
 // Dev server local en cualquier puerto: Vite salta a 5174, 5175... cuando
 // el 5173 está ocupado, y sin esto el navegador bloquea el preflight.

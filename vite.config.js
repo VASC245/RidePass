@@ -16,7 +16,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' https://cdn.kushkipagos.com",
       // Estilos: propio + inline (Tailwind inyecta styles)
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // Conexiones: Supabase + Kushki API + Twilio (solo desde Edge Functions, pero por si acaso)
+      // Conexiones: Supabase + Kushki API (Brevo solo se llama desde las Edge Functions)
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.kushkipagos.com",
       // Imágenes: propio + data URIs (para los QR generados)
       "img-src 'self' data: blob: https://*.supabase.co",

@@ -11,3 +11,6 @@ deno.lock
 # CLI de Supabase: cache local y token personal
 supabase/.temp/
 .supabase-token
+
+# Cloudflare
+.wrangler

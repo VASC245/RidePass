@@ -21,3 +21,10 @@
     "VITE_SUPABASE_ANON_KEY",
     "VITE_PUBLIC_APP_NAME"
   ]
+
+# SPA en Netlify mientras dure la migración (Cloudflare usa
+# not_found_handling en wrangler.jsonc y no necesita _redirects).
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
