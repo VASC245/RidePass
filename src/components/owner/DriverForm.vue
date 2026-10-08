@@ -1,75 +1,83 @@
 <template>
-  <div class="max-w-6xl mx-auto py-10 px-6 space-y-8">
-    <div>
-      <h2 class="text-2xl font-bold text-gray-900">Conductores</h2>
-      <p class="text-sm text-gray-500 mt-1">
-        El conductor se registra en chivaspass con el rol "conductor". Búscalo por su correo exacto y asígnalo a una de tus chivas.
-      </p>
+  <div>
+    <PageHeader title="Conductores"
+      description="Asigna a cada conductor una de tus chivas. Así ve sus salidas del día y puede escanear los boletos al embarcar." />
+
+    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <!-- Conductores asignados -->
+      <BaseCard :padded="false">
+        <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 sm:px-6">
+          <h2 class="text-base font-semibold text-gray-900">Tu equipo</h2>
+          <span v-if="drivers.length" class="text-sm text-gray-600 tabular-nums">
+            {{ drivers.length }} {{ drivers.length === 1 ? 'conductor' : 'conductores' }}
+          </span>
+        </div>
+
+        <ul v-if="drivers.length > 0" class="divide-y divide-gray-100">
+          <li v-for="driver in drivers" :key="driver.id" class="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6">
+            <span class="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold text-gray-700">
+              {{ initialsOf(driver.full_name) }}
+            </span>
+            <div class="min-w-0 flex-1">
+              <p class="truncate font-semibold text-gray-900">{{ driver.full_name }}</p>
+              <p class="truncate text-sm text-gray-600">{{ driver.email }}</p>
+            </div>
+            <span class="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-800">
+              <PhBus :size="14" aria-hidden="true" />
+              {{ driver.chivas?.name ?? 'Sin chiva' }}
+            </span>
+            <BaseButton variant="ghost" size="sm" class="text-bad-700 hover:bg-bad-50" @click="removeDriver(driver)">
+              Quitar
+            </BaseButton>
+          </li>
+        </ul>
+        <EmptyState v-else :icon="PhSteeringWheel" title="Aún no tienes conductores"
+          description="Busca a tu conductor por su correo y asígnalo a una chiva. Debe estar registrado en chivaspass con el rol conductor." />
+      </BaseCard>
+
+      <!-- Agregar conductor -->
+      <BaseCard class="lg:sticky lg:top-8">
+        <template #title>Agregar conductor</template>
+
+        <form class="space-y-4" @submit.prevent="fetchConductor">
+          <div>
+            <label for="driver-email" class="field-label">Correo del conductor</label>
+            <div class="flex gap-2">
+              <input id="driver-email" v-model="search" type="email" placeholder="conductor@correo.com" class="field-control" required />
+              <BaseButton type="submit" variant="dark" class="h-11 shrink-0" :loading="searching" aria-label="Buscar conductor">
+                <PhMagnifyingGlass v-if="!searching" :size="18" />
+              </BaseButton>
+            </div>
+            <p class="field-hint">Escribe el correo exacto con el que se registró.</p>
+          </div>
+
+          <p v-if="searchMsg" class="rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-3 text-sm text-gray-700">{{ searchMsg }}</p>
+          <p v-if="formError" role="alert" class="flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-3.5 py-3 text-sm text-bad-700">
+            <PhWarningCircle :size="18" class="mt-px shrink-0" /> {{ formError }}
+          </p>
+
+          <div v-if="found" class="space-y-3 rounded-lg border border-brand-200 bg-brand-50/60 p-4">
+            <div class="flex items-center gap-3">
+              <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-xs font-bold text-white">
+                {{ initialsOf(found.full_name) }}
+              </span>
+              <div class="min-w-0">
+                <p class="truncate font-semibold text-gray-900">{{ found.full_name }}</p>
+                <p class="truncate text-sm text-gray-600">{{ found.email }}</p>
+              </div>
+            </div>
+            <div>
+              <label for="driver-chiva" class="field-label">Chiva</label>
+              <select id="driver-chiva" v-model="selectedChiva" class="field-control">
+                <option disabled value="">Elige una chiva</option>
+                <option v-for="chiva in chivas" :key="chiva.id" :value="chiva.id">{{ chiva.name }}</option>
+              </select>
+            </div>
+            <BaseButton block :loading="saving" @click="assignConductor">Asignar conductor</BaseButton>
+          </div>
+        </form>
+      </BaseCard>
     </div>
-
-    <!-- Buscador por correo -->
-    <form @submit.prevent="fetchConductor" class="bg-white border border-gray-200 rounded-2xl p-6 space-y-4">
-      <div class="flex flex-col md:flex-row md:items-end gap-4">
-        <div class="flex-1">
-          <label class="field-label">Correo del conductor</label>
-          <input v-model="search" type="email" placeholder="conductor@correo.com" class="field-input" required />
-        </div>
-        <button type="submit" :disabled="searching"
-          class="px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
-          {{ searching ? 'Buscando...' : 'Buscar' }}
-        </button>
-      </div>
-
-      <p v-if="searchMsg" class="text-sm text-gray-500">{{ searchMsg }}</p>
-      <p v-if="formError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ formError }}</p>
-
-      <div v-if="found" class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-t border-gray-100 pt-4">
-        <div>
-          <p class="font-semibold text-gray-900">{{ found.full_name }}</p>
-          <p class="text-sm text-gray-500">{{ found.email }}</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <select v-model="selectedChiva" class="field-input bg-white md:w-56">
-            <option disabled value="">Asignar a chiva</option>
-            <option v-for="chiva in chivas" :key="chiva.id" :value="chiva.id">{{ chiva.name }}</option>
-          </select>
-          <button type="button" @click="assignConductor" :disabled="saving"
-            class="px-4 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white text-sm font-semibold disabled:opacity-50">
-            {{ saving ? 'Guardando...' : 'Asignar' }}
-          </button>
-        </div>
-      </div>
-    </form>
-
-    <!-- Conductores asignados -->
-    <div v-if="drivers.length > 0" class="overflow-x-auto border border-gray-200 rounded-2xl">
-      <table class="w-full text-left text-sm">
-        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-          <tr>
-            <th class="px-5 py-3">Nombre</th>
-            <th class="px-5 py-3">Correo</th>
-            <th class="px-5 py-3">Chiva</th>
-            <th class="px-5 py-3 text-right">Acciones</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr v-for="driver in drivers" :key="driver.id" class="hover:bg-gray-50">
-            <td class="px-5 py-3 font-medium text-gray-800">{{ driver.full_name }}</td>
-            <td class="px-5 py-3 text-gray-600">{{ driver.email }}</td>
-            <td class="px-5 py-3 text-gray-700">{{ driver.chivas?.name }}</td>
-            <td class="px-5 py-3 text-right">
-              <button @click="removeDriver(driver)"
-                class="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-700 hover:bg-red-50">
-                Quitar
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <p v-else class="text-gray-500 text-center py-10 rounded-2xl border border-dashed border-gray-300">
-      Aún no tienes conductores asignados.
-    </p>
   </div>
 </template>
 
@@ -77,6 +85,11 @@
 import { ref, onMounted } from "vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
+import BaseButton from "@/components/ui/BaseButton.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import { PhBus, PhSteeringWheel, PhMagnifyingGlass, PhWarningCircle } from "@phosphor-icons/vue";
 
 const auth = useAuthStore();
 const search = ref("");
@@ -88,6 +101,11 @@ const saving = ref(false);
 const formError = ref("");
 const drivers = ref([]);
 const chivas = ref([]);
+
+const initialsOf = (name = "") => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
+};
 
 // find_conductor devuelve un solo conductor por correo exacto: un dueño ya
 // no puede listar a todos los conductores registrados en la plataforma.
@@ -161,22 +179,3 @@ onMounted(() => {
   fetchDrivers();
 });
 </script>
-
-<style scoped>
-.field-input {
-  width: 100%;
-  padding: 0.625rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.75rem;
-  font-size: 0.875rem;
-  outline: none;
-}
-.field-input:focus { box-shadow: 0 0 0 2px #ea580c; }
-.field-label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.375rem;
-}
-</style>

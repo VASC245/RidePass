@@ -1,169 +1,183 @@
 <template>
-  <div class="max-w-2xl mx-auto space-y-6">
-    <h2 class="text-2xl font-bold text-gray-800">Configuración</h2>
+  <div class="pb-24">
+    <PageHeader title="Configuración" description="Cómo vendes, cómo te pagan y cómo te ven tus clientes." />
 
-    <!-- Controles de venta -->
-    <div v-if="isSeller" class="bg-white rounded-2xl shadow-sm border p-6 space-y-5">
-      <div>
-        <h3 class="font-bold text-gray-800">Controles de venta</h3>
-        <p class="text-sm text-gray-400 mt-1">
-          Lo que apagues aquí deja de funcionar de inmediato para todos: página pública, agencias y pagos.
+    <div class="space-y-8">
+      <!-- Controles de venta -->
+      <section v-if="isSeller" class="settings-section" aria-labelledby="s-venta">
+        <div>
+          <h2 id="s-venta" class="settings-title">Controles de venta</h2>
+          <p class="settings-desc">Lo que apagues aquí deja de funcionar de inmediato para todos: página pública, agencias y pagos.</p>
+        </div>
+        <BaseCard>
+          <div class="-my-3 divide-y divide-gray-200">
+            <ToggleRow v-model="form.public_listing"
+              label="Aparecer en la página pública"
+              hint="Si lo apagas, tus tours y salidas desaparecen del sitio pero sigues pudiendo vender desde tu panel." />
+            <ToggleRow v-model="form.accept_transfers"
+              label="Aceptar transferencias bancarias"
+              hint="Los clientes suben el comprobante y tú lo verificas." />
+            <ToggleRow v-model="form.accept_cards"
+              label="Aceptar tarjeta"
+              hint="Requiere tener Kushki configurado. El cobro se confirma al instante." />
+            <ToggleRow v-if="isOwner" v-model="form.accept_cash"
+              label="Venta en efectivo desde mi panel"
+              hint="Registrar ventas en persona sin comprobante." />
+          </div>
+        </BaseCard>
+      </section>
+
+      <!-- Horario -->
+      <section v-if="isSeller" class="settings-section" aria-labelledby="s-horario">
+        <div>
+          <h2 id="s-horario" class="settings-title">Horario de atención</h2>
+          <p class="settings-desc">Controla cuándo pueden reservar tus clientes desde la página pública.</p>
+        </div>
+        <BaseCard>
+          <div class="-mt-3">
+            <ToggleRow v-model="form.enforce_hours"
+              label="Solo recibir reservas en mi horario de atención"
+              hint="Fuera de ese horario el cliente ve un aviso y no puede reservar." />
+          </div>
+          <div class="mt-3 grid gap-4 sm:grid-cols-3" :class="!form.enforce_hours && 'opacity-60'">
+            <div>
+              <label for="cfg-open" class="field-label">Abre</label>
+              <input id="cfg-open" v-model="form.hours_open" type="time" :disabled="!form.enforce_hours" class="field-control tabular-nums" />
+            </div>
+            <div>
+              <label for="cfg-close" class="field-label">Cierra</label>
+              <input id="cfg-close" v-model="form.hours_close" type="time" :disabled="!form.enforce_hours" class="field-control tabular-nums" />
+            </div>
+            <div v-if="isOwner">
+              <label for="cfg-cutoff" class="field-label">Cerrar ventas antes de salir</label>
+              <select id="cfg-cutoff" v-model.number="form.close_sales_minutes_before" class="field-control">
+                <option :value="0">No cerrar</option>
+                <option :value="15">15 minutos antes</option>
+                <option :value="30">30 minutos antes</option>
+                <option :value="60">1 hora antes</option>
+                <option :value="120">2 horas antes</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-4">
+            <label for="cfg-note" class="field-label">Nota de horario para el cliente</label>
+            <input id="cfg-note" v-model="form.hours_note" type="text" maxlength="140"
+              placeholder="Ej: Atendemos de lunes a domingo, feriados hasta las 21h" class="field-control" />
+            <p class="field-hint tabular-nums">{{ (form.hours_note || '').length }} de 140 caracteres</p>
+          </div>
+        </BaseCard>
+      </section>
+
+      <!-- Datos de pago -->
+      <section class="settings-section" aria-labelledby="s-pago">
+        <div>
+          <h2 id="s-pago" class="settings-title">Datos para transferencia</h2>
+          <p class="settings-desc">Se muestran a tus clientes cuando pagan por transferencia.</p>
+        </div>
+        <BaseCard>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="cfg-bank" class="field-label">Banco</label>
+              <input id="cfg-bank" v-model="form.bank_name" type="text" placeholder="Ej: Banco Pichincha" class="field-control" />
+            </div>
+            <div>
+              <label for="cfg-bank-type" class="field-label">Tipo de cuenta</label>
+              <select id="cfg-bank-type" v-model="form.bank_type" class="field-control">
+                <option value="ahorros">Ahorros</option>
+                <option value="corriente">Corriente</option>
+              </select>
+            </div>
+            <div>
+              <label for="cfg-account" class="field-label">Número de cuenta</label>
+              <input id="cfg-account" v-model="form.bank_account" type="text" inputmode="numeric" placeholder="Ej: 2200123456" class="field-control tabular-nums" />
+            </div>
+            <div>
+              <label for="cfg-holder" class="field-label">Titular de la cuenta</label>
+              <input id="cfg-holder" v-model="form.bank_owner" type="text" placeholder="Nombre completo" class="field-control" />
+            </div>
+          </div>
+        </BaseCard>
+      </section>
+
+      <!-- Contacto -->
+      <section class="settings-section" aria-labelledby="s-contacto">
+        <div>
+          <h2 id="s-contacto" class="settings-title">Contacto</h2>
+          <p class="settings-desc">El WhatsApp recibe un aviso por cada venta o reserva nueva.</p>
+        </div>
+        <BaseCard>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="cfg-phone" class="field-label">Teléfono</label>
+              <input id="cfg-phone" v-model="form.contact_phone" type="tel" placeholder="+593 99 999 9999" class="field-control tabular-nums" />
+            </div>
+            <div>
+              <label for="cfg-wa" class="field-label">WhatsApp</label>
+              <input id="cfg-wa" v-model="form.contact_whatsapp" type="tel" placeholder="+593 99 999 9999" class="field-control tabular-nums" />
+            </div>
+            <div class="sm:col-span-2">
+              <label for="cfg-email" class="field-label">Correo de contacto</label>
+              <input id="cfg-email" v-model="form.contact_email" type="email" placeholder="contacto@tunegocio.com" class="field-control" />
+            </div>
+            <div>
+              <label for="cfg-ig" class="field-label">Instagram</label>
+              <div class="input-affix">
+                <span class="input-affix__prefix" aria-hidden="true">@</span>
+                <input id="cfg-ig" v-model="form.instagram" type="text" placeholder="tunegocio" class="input-affix__input" />
+              </div>
+            </div>
+            <div>
+              <label for="cfg-fb" class="field-label">Facebook</label>
+              <div class="input-affix">
+                <span class="input-affix__prefix" aria-hidden="true">facebook.com/</span>
+                <input id="cfg-fb" v-model="form.facebook" type="text" placeholder="tunegocio" class="input-affix__input" />
+              </div>
+            </div>
+          </div>
+        </BaseCard>
+      </section>
+
+      <!-- Identidad -->
+      <section class="settings-section" aria-labelledby="s-identidad">
+        <div>
+          <h2 id="s-identidad" class="settings-title">Identidad del negocio</h2>
+          <p class="settings-desc">Cómo te presentas en la página pública y en el checkout.</p>
+        </div>
+        <BaseCard>
+          <div class="space-y-4">
+            <div>
+              <label for="cfg-name" class="field-label">Nombre visible del negocio</label>
+              <input id="cfg-name" v-model="form.business_name" type="text" placeholder="Ej: Tours Chiva Express Baños" class="field-control" />
+            </div>
+            <div>
+              <label for="cfg-logo" class="field-label">URL del logo</label>
+              <input id="cfg-logo" v-model="form.logo_url" type="url" placeholder="https://..." class="field-control" />
+            </div>
+            <div>
+              <label for="cfg-notes" class="field-label">Notas para el cliente</label>
+              <textarea id="cfg-notes" v-model="form.notes" rows="3" placeholder="Ej: Punto de encuentro en la plaza central a las 8:45" class="field-control"></textarea>
+              <p class="field-hint">Aparecen en el checkout, antes de pagar.</p>
+            </div>
+          </div>
+        </BaseCard>
+      </section>
+    </div>
+
+    <!-- Barra de guardado -->
+    <div class="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white md:left-64"
+      style="padding-bottom: env(safe-area-inset-bottom)">
+      <div class="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-end sm:gap-4 sm:px-6 lg:px-10">
+        <p class="text-sm sm:mr-auto" aria-live="polite">
+          <span v-if="error" class="inline-flex items-center gap-1.5 text-bad-700"><PhWarningCircle :size="18" />{{ error }}</span>
+          <Transition name="fade">
+            <span v-if="saved && !error" class="inline-flex items-center gap-1.5 font-medium text-ok-700"><PhCheckCircle :size="18" />Configuración guardada</span>
+          </Transition>
         </p>
-      </div>
-
-      <div class="divide-y divide-gray-100">
-        <ToggleRow v-model="form.public_listing"
-          label="Aparecer en la página pública"
-          hint="Si lo apagas, tus tours y salidas desaparecen del sitio pero sigues pudiendo vender desde tu panel." />
-        <ToggleRow v-model="form.accept_transfers"
-          label="Aceptar transferencias bancarias"
-          hint="Los clientes suben el comprobante y tú lo verificas." />
-        <ToggleRow v-model="form.accept_cards"
-          label="Aceptar tarjeta"
-          hint="Requiere tener Kushki configurado. El cobro se confirma al instante." />
-        <ToggleRow v-if="isOwner" v-model="form.accept_cash"
-          label="Venta en efectivo desde mi panel"
-          hint="Registrar ventas en persona sin comprobante." />
-      </div>
-
-      <div class="pt-2 space-y-4">
-        <ToggleRow v-model="form.enforce_hours"
-          label="Solo recibir reservas en mi horario de atención"
-          hint="Fuera de ese horario el cliente ve un aviso y no puede reservar." />
-        <div class="grid sm:grid-cols-3 gap-4" :class="!form.enforce_hours && 'opacity-50'">
-          <div>
-            <label class="field-label">Abre</label>
-            <input v-model="form.hours_open" type="time" :disabled="!form.enforce_hours" class="field-input" />
-          </div>
-          <div>
-            <label class="field-label">Cierra</label>
-            <input v-model="form.hours_close" type="time" :disabled="!form.enforce_hours" class="field-input" />
-          </div>
-          <div v-if="isOwner">
-            <label class="field-label">Cerrar ventas antes de salir</label>
-            <select v-model.number="form.close_sales_minutes_before" class="field-input bg-white">
-              <option :value="0">No cerrar</option>
-              <option :value="15">15 minutos antes</option>
-              <option :value="30">30 minutos antes</option>
-              <option :value="60">1 hora antes</option>
-              <option :value="120">2 horas antes</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label class="field-label">Nota de horario para el cliente</label>
-          <input v-model="form.hours_note" type="text" maxlength="140"
-            placeholder="Ej: Atendemos de lunes a domingo, feriados hasta las 21h" class="field-input" />
-        </div>
+        <BaseButton size="lg" :loading="saving" class="sm:min-w-52" @click="save">
+          {{ saving ? 'Guardando...' : 'Guardar configuración' }}
+        </BaseButton>
       </div>
     </div>
-
-    <!-- Datos de pago -->
-    <div class="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
-      <h3 class="font-bold text-gray-800">Datos para transferencia</h3>
-      <p class="text-sm text-gray-400 -mt-2">Se muestran a tus clientes cuando pagan por transferencia.</p>
-
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label class="field-label">Banco</label>
-          <input v-model="form.bank_name" type="text" placeholder="Ej: Banco Pichincha" class="field-input" />
-        </div>
-        <div>
-          <label class="field-label">Tipo de cuenta</label>
-          <select v-model="form.bank_type" class="field-input bg-white">
-            <option value="ahorros">Ahorros</option>
-            <option value="corriente">Corriente</option>
-          </select>
-        </div>
-        <div>
-          <label class="field-label">Número de cuenta</label>
-          <input v-model="form.bank_account" type="text" placeholder="Ej: 2200123456" class="field-input" />
-        </div>
-        <div>
-          <label class="field-label">Titular de la cuenta</label>
-          <input v-model="form.bank_owner" type="text" placeholder="Nombre completo" class="field-input" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Contacto -->
-    <div class="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
-      <h3 class="font-bold text-gray-800">Datos de contacto</h3>
-      <p class="text-sm text-gray-400 -mt-2">El WhatsApp recibe un aviso por cada venta o reserva nueva.</p>
-
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label class="field-label">Teléfono</label>
-          <input v-model="form.contact_phone" type="tel" placeholder="+593 99 999 9999" class="field-input" />
-        </div>
-        <div>
-          <label class="field-label">WhatsApp</label>
-          <input v-model="form.contact_whatsapp" type="tel" placeholder="+593 99 999 9999" class="field-input" />
-        </div>
-        <div class="sm:col-span-2">
-          <label class="field-label">Correo de contacto</label>
-          <input v-model="form.contact_email" type="email" placeholder="contacto@tunegocio.com" class="field-input" />
-        </div>
-      </div>
-    </div>
-
-    <!-- Redes sociales -->
-    <div class="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
-      <h3 class="font-bold text-gray-800">Redes sociales</h3>
-
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div>
-          <label class="field-label">Instagram</label>
-          <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden shadow-sm">
-            <span class="px-3 text-gray-400 text-sm bg-gray-50 border-r border-gray-300 py-2.5">@</span>
-            <input v-model="form.instagram" type="text" placeholder="tunegocio" class="flex-1 px-3 py-2.5 text-sm outline-none" />
-          </div>
-        </div>
-        <div>
-          <label class="field-label">Facebook</label>
-          <div class="flex items-center border border-gray-300 rounded-xl overflow-hidden shadow-sm">
-            <span class="px-3 text-gray-400 text-sm bg-gray-50 border-r border-gray-300 py-2.5">fb/</span>
-            <input v-model="form.facebook" type="text" placeholder="tunegocio" class="flex-1 px-3 py-2.5 text-sm outline-none" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Identidad -->
-    <div class="bg-white rounded-2xl shadow-sm border p-6 space-y-4">
-      <h3 class="font-bold text-gray-800">Identidad del negocio</h3>
-
-      <div class="grid sm:grid-cols-2 gap-4">
-        <div class="sm:col-span-2">
-          <label class="field-label">Nombre visible del negocio</label>
-          <input v-model="form.business_name" type="text" placeholder="Ej: Tours Chiva Express Baños" class="field-input" />
-        </div>
-        <div class="sm:col-span-2">
-          <label class="field-label">URL del logo</label>
-          <input v-model="form.logo_url" type="url" placeholder="https://..." class="field-input" />
-        </div>
-        <div class="sm:col-span-2">
-          <label class="field-label">Notas para el cliente (aparecen en el checkout)</label>
-          <textarea v-model="form.notes" rows="2" placeholder="Ej: Punto de encuentro en la plaza central a las 8:45am" class="field-input resize-none"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Feedback -->
-    <transition name="fade">
-      <div v-if="saved" class="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm font-semibold">
-        Configuración guardada.
-      </div>
-    </transition>
-    <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-3 text-sm">{{ error }}</div>
-
-    <button
-      @click="save"
-      :disabled="saving"
-      class="w-full py-3 rounded-xl font-bold text-white bg-gray-900 hover:bg-gray-800 transition-all active:scale-[0.99] disabled:opacity-50"
-    >
-      {{ saving ? 'Guardando...' : 'Guardar configuración' }}
-    </button>
   </div>
 </template>
 
@@ -171,16 +185,20 @@
 import { ref, computed, onMounted, defineComponent, h } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import BaseButton from '@/components/ui/BaseButton.vue'
+import { PhCheckCircle, PhWarningCircle } from '@phosphor-icons/vue'
 
 // Interruptor simple reutilizable dentro de este panel
 const ToggleRow = defineComponent({
   props: { modelValue: Boolean, label: String, hint: String },
   emits: ['update:modelValue'],
   setup(props, { emit }) {
-    return () => h('label', { class: 'flex items-start justify-between gap-4 py-3 cursor-pointer select-none' }, [
+    return () => h('label', { class: 'flex items-start justify-between gap-4 py-3.5 cursor-pointer select-none' }, [
       h('span', { class: 'min-w-0' }, [
-        h('span', { class: 'block text-sm font-semibold text-gray-800' }, props.label),
-        props.hint ? h('span', { class: 'block text-xs text-gray-400 mt-0.5' }, props.hint) : null,
+        h('span', { class: 'block text-sm font-semibold text-gray-900' }, props.label),
+        props.hint ? h('span', { class: 'block text-sm text-gray-600 mt-0.5 leading-snug' }, props.hint) : null,
       ]),
       h('button', {
         type: 'button',
@@ -188,13 +206,13 @@ const ToggleRow = defineComponent({
         'aria-checked': props.modelValue,
         onClick: () => emit('update:modelValue', !props.modelValue),
         class: [
-          'relative shrink-0 w-11 h-6 rounded-full transition-colors',
-          props.modelValue ? 'bg-orange-600' : 'bg-gray-300',
+          'relative shrink-0 mt-0.5 w-11 h-6 rounded-full transition-colors duration-150',
+          props.modelValue ? 'bg-brand-600' : 'bg-gray-300',
         ],
       }, [
         h('span', {
           class: [
-            'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform',
+            'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ease-out',
             props.modelValue ? 'translate-x-5' : '',
           ],
         }),
@@ -264,24 +282,50 @@ const save = async () => {
 </script>
 
 <style scoped>
-.field-input {
-  width: 100%;
-  padding: 0.625rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 2px 0 rgb(0 0 0/0.05);
+.settings-section {
+  display: grid;
+  gap: 0.75rem 2rem;
+}
+@media (min-width: 1024px) {
+  .settings-section { grid-template-columns: 15rem minmax(0, 1fr); }
+}
+.settings-title { font-size: 1rem; font-weight: 600; color: var(--color-gray-900); }
+.settings-desc { margin-top: 0.25rem; font-size: 0.875rem; line-height: 1.5; color: var(--color-gray-600); }
+
+.input-affix {
+  display: flex;
+  align-items: stretch;
+  min-height: 2.75rem;
+  border: 1px solid var(--color-gray-300);
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+.input-affix:hover { border-color: var(--color-gray-400); }
+.input-affix:focus-within {
+  border-color: var(--color-brand-600);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-brand-500) 22%, transparent);
+}
+.input-affix__prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  border-right: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
   font-size: 0.875rem;
+  color: var(--color-gray-600);
+}
+.input-affix__input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9375rem;
+  color: var(--color-gray-900);
   outline: none;
 }
-.field-input:focus { box-shadow: 0 0 0 2px #ea580c; }
-.field-input:disabled { background: #f9fafb; }
-.field-label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.375rem;
-}
-.fade-enter-active, .fade-leave-active { transition: opacity .3s; }
+.input-affix__input::placeholder { color: var(--color-gray-500); }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 200ms ease-out; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>

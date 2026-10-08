@@ -1,64 +1,62 @@
 <template>
-  <div class="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-    <BaseCard class="w-full max-w-md p-6 relative">
+  <div class="fixed inset-0 z-50 flex items-end justify-center bg-black/55 p-0 sm:items-center sm:p-4"
+    role="dialog" aria-modal="true" aria-labelledby="proof-title" @click.self="$emit('close')">
+    <div class="relative w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-[var(--radius-card)] sm:p-6">
       <button
         type="button"
         @click="$emit('close')"
-        class="absolute top-3 right-3 w-8 h-8 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+        class="absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"
         aria-label="Cerrar"
       >
-        <PhX :size="16" weight="bold" class="mx-auto" />
+        <PhX :size="18" weight="bold" />
       </button>
 
-      <h2 class="text-xl font-bold text-gray-900 mb-1">Comprobante de transferencia</h2>
-      <p class="text-sm text-gray-500 mb-5">
+      <h2 id="proof-title" class="pr-10 text-lg font-semibold text-gray-900">Comprobante de transferencia</h2>
+      <p class="mb-5 mt-1 text-sm text-gray-600">
         Sube la foto o PDF del depósito. El dueño lo verificará y los asientos quedarán confirmados.
       </p>
 
       <form @submit.prevent="uploadProof" class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Número de comprobante</label>
-          <input
-            v-model.trim="numeroComprobante"
-            required
-            maxlength="60"
-            class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-            placeholder="Ej: TRX-928374"
-          />
+          <label for="proof-number" class="field-label">Número de comprobante</label>
+          <input id="proof-number" v-model.trim="numeroComprobante" required maxlength="60"
+            class="field-control" placeholder="Ej: TRX-928374" />
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Imagen o PDF</label>
-          <input
-            type="file"
-            accept="image/jpeg,image/png,image/webp,application/pdf"
-            required
-            class="block w-full text-sm text-gray-600"
-            @change="handleFileChange"
-          />
-          <p class="text-xs text-gray-400 mt-1">JPG, PNG, WEBP o PDF. Máximo 5 MB.</p>
+          <label for="proof-file" class="field-label">Imagen o PDF</label>
+          <label for="proof-file"
+            class="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-3 transition-colors hover:border-brand-400 hover:bg-brand-50">
+            <PhUploadSimple :size="22" class="shrink-0 text-brand-700" />
+            <span class="min-w-0 text-sm">
+              <span class="block truncate font-semibold text-gray-900">{{ fileName || "Elegir archivo" }}</span>
+              <span class="text-gray-600">JPG, PNG, WEBP o PDF. Máximo 5 MB.</span>
+            </span>
+          </label>
+          <input id="proof-file" type="file" class="sr-only" required
+            accept="image/jpeg,image/png,image/webp,application/pdf" @change="handleFileChange" />
         </div>
 
-        <div v-if="previewUrl" class="text-center">
-          <img v-if="!isPdf" :src="previewUrl" class="w-40 h-40 object-cover border rounded-lg mx-auto" alt="Vista previa del comprobante" />
-          <p v-else class="text-sm text-gray-700">{{ fileName }}</p>
+        <div v-if="previewUrl && !isPdf" class="text-center">
+          <img :src="previewUrl" class="mx-auto h-40 w-40 rounded-lg border border-gray-200 object-cover" alt="Vista previa del comprobante" />
         </div>
 
-        <p v-if="error" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">{{ error }}</p>
+        <p v-if="error" role="alert" class="flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-3 py-2.5 text-sm text-bad-700">
+          <PhWarningCircle :size="18" class="mt-px shrink-0" /> {{ error }}
+        </p>
 
-        <BaseButton full type="submit" :disabled="uploading || !selectedFile">
-          {{ uploading ? "Subiendo..." : "Continuar" }}
+        <BaseButton block size="lg" type="submit" :loading="uploading" :disabled="!selectedFile">
+          {{ uploading ? "Subiendo comprobante" : "Subir y continuar" }}
         </BaseButton>
       </form>
-    </BaseCard>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref } from "vue";
-import { PhX } from "@phosphor-icons/vue";
+import { PhX, PhUploadSimple, PhWarningCircle } from "@phosphor-icons/vue";
 import { supabase } from "@/lib/supabase";
-import BaseCard from "@/components/ui/BaseCard.vue";
 import BaseButton from "@/components/ui/BaseButton.vue";
 
 // Este modal SOLO sube el archivo al bucket. El registro del comprobante lo

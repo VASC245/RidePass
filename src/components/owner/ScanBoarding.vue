@@ -1,45 +1,55 @@
 <template>
-  <BaseCard class="max-w-2xl mx-auto p-8 border border-gray-200 shadow-md rounded-2xl">
-    <!-- Título -->
-    <h2 class="text-3xl font-extrabold text-center text-gray-800 mb-6">
-      🎫 Escaneo de QR - Embarque
-    </h2>
+  <div class="mx-auto max-w-xl">
+    <PageHeader title="Embarque" description="Apunta la cámara al QR del boleto. Cada boleto se valida una sola vez." />
 
-    <div class="space-y-6 text-center">
+    <div class="space-y-4">
       <!-- Cámara -->
-      <div class="relative">
-        <video
-          ref="videoRef"
-          autoplay
-          playsinline
-          class="w-full rounded-2xl border-4 border-gray-200 shadow-md"
-        ></video>
-        <div
-          class="absolute inset-0 border-4 border-dashed border-green-500 rounded-2xl pointer-events-none animate-pulse"
-        ></div>
+      <div class="relative aspect-square overflow-hidden rounded-[var(--radius-card)] bg-gray-950 sm:aspect-[4/3]">
+        <video ref="videoRef" autoplay playsinline muted class="size-full object-cover" :class="cameraError && 'invisible'" />
+
+        <!-- Visor -->
+        <div v-if="!cameraError" class="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <div class="viewfinder" :class="[scanKind && 'viewfinder--' + scanKind, busy && 'viewfinder--busy']">
+            <span /><span /><span /><span />
+          </div>
+          <p class="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-sm font-medium text-white">
+            {{ busy ? 'Validando…' : scanResult ? 'Escaneo en pausa' : 'Buscando QR…' }}
+          </p>
+        </div>
+
+        <!-- Sin cámara -->
+        <div v-else class="absolute inset-0 flex flex-col items-center justify-center px-6 text-center text-white">
+          <span class="mb-4 inline-flex size-14 items-center justify-center rounded-full bg-white/10">
+            <PhCameraSlash :size="28" />
+          </span>
+          <p class="text-lg font-semibold">No se pudo abrir la cámara</p>
+          <p class="mt-1 max-w-[34ch] text-sm text-gray-300">Permite el acceso a la cámara en tu navegador y vuelve a intentarlo.</p>
+          <BaseButton variant="primary" size="lg" class="mt-5" @click="startScanner">
+            <PhCamera :size="20" /> Activar cámara
+          </BaseButton>
+        </div>
       </div>
 
-      <!-- Estado -->
-      <transition name="fade">
-        <div
-          v-if="scanResult"
-          class="p-4 rounded-xl font-semibold text-lg shadow-sm"
-          :class="scanResultClass"
-        >
-          {{ scanResult }}
-        </div>
-      </transition>
+      <!-- Resultado -->
+      <div aria-live="assertive" aria-atomic="true">
+        <Transition name="result">
+          <div v-if="scanResult" :key="resultKey" class="result" :class="resultStyle.box">
+            <component :is="resultStyle.icon" :size="44" weight="fill" class="shrink-0" :class="resultStyle.icon_color" />
+            <div class="min-w-0">
+              <p class="text-xl font-bold leading-tight" :class="resultStyle.title_color">{{ resultStyle.title }}</p>
+              <p class="mt-1 text-base text-gray-800">{{ scanResult }}</p>
+            </div>
+          </div>
+        </Transition>
+      </div>
 
-      <!-- Botón reiniciar -->
-      <BaseButton
-        full
-        @click="startScanner"
-        class="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition active:scale-95"
-      >
-        🔄 Reiniciar escáner
+      <BaseButton v-if="!cameraError" :variant="scanResult ? 'primary' : 'secondary'" size="lg" block @click="startScanner">
+        <PhQrCode v-if="scanResult" :size="20" />
+        <PhArrowsClockwise v-else :size="20" />
+        {{ scanResult ? 'Escanear siguiente boleto' : 'Reiniciar cámara' }}
       </BaseButton>
     </div>
-  </BaseCard>
+  </div>
 </template>
 
 <script setup>
@@ -48,12 +58,18 @@ import jsQR from "jsqr";
 import { supabase } from "@/lib/supabase";
 
 import BaseButton from "@/components/ui/BaseButton.vue";
-import BaseCard from "@/components/ui/BaseCard.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import {
+  PhCamera, PhCameraSlash, PhQrCode, PhArrowsClockwise,
+  PhCheckCircle, PhWarningCircle, PhXCircle, PhWifiSlash,
+} from "@phosphor-icons/vue";
 
 const videoRef = ref(null);
 const scanResult = ref("");
-const scanKind = ref("");   // ok | warn | error
+const scanKind = ref("");   // ok | used | invalid | error
 const busy = ref(false);
+const cameraError = ref(false);
+const resultKey = ref(0);
 
 let stream = null;
 let animationFrameId = null;
@@ -61,11 +77,21 @@ let animationFrameId = null;
 const setResult = (kind, text) => {
   scanKind.value = kind;
   scanResult.value = text;
+  resultKey.value++;
+};
+
+const stopCamera = () => {
+  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  animationFrameId = null;
+  if (stream) stream.getTracks().forEach((track) => track.stop());
+  stream = null;
 };
 
 // Iniciar cámara
 const startScanner = async () => {
   setResult("", "");
+  cameraError.value = false;
+  stopCamera();
   try {
     stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
@@ -74,7 +100,7 @@ const startScanner = async () => {
     animationFrameId = requestAnimationFrame(tick);
   } catch (err) {
     console.error("Error accediendo a cámara:", err);
-    setResult("error", "No se pudo acceder a la cámara. Revisa los permisos del navegador.");
+    cameraError.value = true;
   }
 };
 
@@ -115,12 +141,12 @@ const handleScan = async (qrText) => {
 
     if (data?.ok) {
       const seats = (data.seats ?? []).join(", ");
-      setResult("ok", `Abordaron ${data.customer ?? "pasajeros"} · asientos ${seats}${data.tour ? ` · ${data.tour}` : ""}.`);
+      setResult("ok", `${data.customer ?? "Pasajeros"} · asientos ${seats}${data.tour ? ` · ${data.tour}` : ""}`);
       await playBeep();
     } else if (data?.code === "ALREADY_BOARDED") {
-      setResult("warn", `${data.message} Asientos ${(data.seats ?? []).join(", ")}.`);
+      setResult("used", `${data.message} Asientos ${(data.seats ?? []).join(", ")}.`);
     } else {
-      setResult("warn", data?.message || "QR inválido.");
+      setResult("invalid", data?.message || "Este código no corresponde a un boleto.");
     }
   } catch (err) {
     console.error("board_sale:", err);
@@ -146,27 +172,53 @@ const playBeep = async () => {
 
 // Limpieza
 onBeforeUnmount(() => {
-  if (stream) stream.getTracks().forEach((track) => track.stop());
-  if (animationFrameId) cancelAnimationFrame(animationFrameId);
+  stopCamera();
   if (beep) { beep.pause(); beep.currentTime = 0; }
 });
 
 onMounted(startScanner);
 
-const scanResultClass = computed(() => ({
-  ok:    "bg-green-100 text-green-700 border border-green-300",
-  warn:  "bg-yellow-100 text-yellow-700 border border-yellow-300",
-  error: "bg-red-100 text-red-700 border border-red-300",
-}[scanKind.value] ?? "bg-gray-100 text-gray-700 border border-gray-200"));
+const RESULT_STYLES = {
+  ok:      { title: "Pasajero válido, puede subir", icon: PhCheckCircle,   box: "border-ok-600 bg-ok-50",     icon_color: "text-ok-600",   title_color: "text-ok-700" },
+  used:    { title: "Boleto ya usado",              icon: PhWarningCircle, box: "border-warn-600 bg-warn-50", icon_color: "text-warn-600", title_color: "text-warn-700" },
+  invalid: { title: "QR no válido",                 icon: PhXCircle,       box: "border-bad-600 bg-bad-50",   icon_color: "text-bad-600",  title_color: "text-bad-700" },
+  error:   { title: "No se pudo validar",           icon: PhWifiSlash,     box: "border-gray-400 bg-gray-100", icon_color: "text-gray-600", title_color: "text-gray-900" },
+};
+const resultStyle = computed(() => RESULT_STYLES[scanKind.value] ?? RESULT_STYLES.error);
 </script>
 
 <style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.4s;
+.viewfinder {
+  position: relative;
+  width: min(62%, 16rem);
+  aspect-ratio: 1;
+  color: #fff;
+  transition: color 200ms var(--ease-out-quart), transform 200ms var(--ease-out-quart);
 }
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
+.viewfinder span {
+  position: absolute;
+  width: 2.25rem; height: 2.25rem;
+  border-color: currentColor;
+  border-style: solid;
 }
+.viewfinder span:nth-child(1) { top: 0; left: 0; border-width: 4px 0 0 4px; border-top-left-radius: 12px; }
+.viewfinder span:nth-child(2) { top: 0; right: 0; border-width: 4px 4px 0 0; border-top-right-radius: 12px; }
+.viewfinder span:nth-child(3) { bottom: 0; left: 0; border-width: 0 0 4px 4px; border-bottom-left-radius: 12px; }
+.viewfinder span:nth-child(4) { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-bottom-right-radius: 12px; }
+.viewfinder--busy { transform: scale(0.96); }
+.viewfinder--ok { color: var(--color-ok-200); }
+.viewfinder--used { color: var(--color-warn-200); }
+.viewfinder--invalid, .viewfinder--error { color: var(--color-bad-200); }
+
+.result {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-width: 2px;
+  border-radius: var(--radius-card);
+}
+
+.result-enter-active { transition: opacity 200ms var(--ease-out-quart), transform 200ms var(--ease-out-quart); }
+.result-enter-from { opacity: 0; transform: translateY(8px); }
 </style>

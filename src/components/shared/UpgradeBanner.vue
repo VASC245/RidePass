@@ -1,17 +1,20 @@
 <template>
   <div v-if="show"
-    class="rounded-2xl border-2 p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-    :class="urgency === 'warn' ? 'bg-yellow-50 border-yellow-300' : 'bg-orange-50 border-orange-300'"
+    class="flex flex-col items-start justify-between gap-4 rounded-[var(--radius-card)] border p-4 sm:flex-row sm:items-center sm:p-5"
+    :class="urgency === 'warn' ? 'bg-warn-50 border-warn-200' : 'bg-brand-50 border-brand-200'"
+    role="status"
   >
-    <div>
-      <p class="font-bold text-gray-900 flex items-center gap-2">
-                {{ title }}
-      </p>
-      <p class="text-sm text-gray-500 mt-0.5">{{ subtitle }}</p>
+    <div class="flex items-start gap-3">
+      <component :is="urgency === 'warn' ? PhWarningCircle : PhInfo" :size="22" class="mt-0.5 shrink-0"
+        :class="urgency === 'warn' ? 'text-warn-700' : 'text-brand-700'" />
+      <div>
+        <p class="font-semibold text-gray-900">{{ title }}</p>
+        <p class="mt-0.5 text-sm text-gray-700">{{ subtitle }}</p>
+      </div>
     </div>
     <RouterLink to="/panel/planes"
-      class="shrink-0 font-bold text-sm px-5 py-2.5 rounded-xl transition"
-      :class="urgency === 'warn' ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-orange-600 hover:bg-orange-700 text-white'"
+      class="inline-flex h-10 shrink-0 items-center rounded-lg px-4 text-sm font-semibold text-white transition-colors"
+      :class="urgency === 'warn' ? 'bg-gray-900 hover:bg-gray-800' : 'bg-brand-600 hover:bg-brand-700'"
     >
       Ver planes
     </RouterLink>
@@ -20,6 +23,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { PhWarningCircle, PhInfo } from '@phosphor-icons/vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const props = defineProps({

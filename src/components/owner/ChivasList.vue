@@ -1,103 +1,107 @@
 <template>
-  <div class="max-w-4xl mx-auto py-10 space-y-8">
-    <!-- Título -->
-    <h2 class="text-3xl font-extrabold text-center text-gray-800">
-      🚌 Chivas registradas
-    </h2>
+  <div>
+    <PageHeader title="Chivas" description="Los vehículos con los que haces tus salidas. La capacidad define cuántos asientos se pueden vender.">
+      <template #actions>
+        <BaseButton v-if="!showForm" @click="openNew">
+          <PhPlus :size="18" weight="bold" /> Nueva chiva
+        </BaseButton>
+      </template>
+    </PageHeader>
 
-    <!-- Formulario de registro -->
-    <div class="bg-white p-8 rounded-2xl shadow-md border border-gray-200 space-y-6">
-      <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-1">Nombre</label>
-        <input
-          v-model="nombre"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-semibold text-gray-700 mb-1">Placa</label>
-        <input
-          v-model="placa"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-        />
-      </div>
-
-      <div class="grid grid-cols-2 gap-6">
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Código</label>
-          <input
-            v-model="codigo"
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-          />
-        </div>
-        <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-1">Capacidad</label>
-          <input
-            v-model="capacidad"
-            type="number"
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-green-500 focus:outline-none"
-          />
-        </div>
-      </div>
-
-      <!-- Botones -->
-      <div class="flex gap-3">
-        <button
-          @click="saveChiva"
-          class="flex-1 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
-        >
-          {{ editingId ? "💾 Guardar cambios" : "✅ Guardar chiva" }}
-        </button>
-        <button
-          v-if="editingId"
-          @click="resetForm"
-          class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
-        >
-          ❌ Cancelar
-        </button>
-      </div>
-    </div>
-
-    <!-- Lista de chivas -->
-    <div v-if="chivas.length" class="space-y-4">
-      <div
-        v-for="chiva in chivas"
-        :key="chiva.id"
-        class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition"
-      >
-        <div>
-          <p class="font-bold text-gray-800">{{ chiva.name }} ({{ chiva.code }})</p>
-          <p class="text-sm text-gray-600">🚗 Placa: {{ chiva.plate }}</p>
-          <p class="text-sm text-gray-600">👥 Capacidad: {{ chiva.capacity }} personas</p>
-        </div>
-
-        <div class="flex gap-2">
-          <button
-            @click="editChiva(chiva)"
-            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
-          >
-            ✏️ Editar
+    <div class="space-y-6">
+      <!-- Formulario: aparece solo al crear o editar -->
+      <BaseCard v-if="showForm">
+        <template #title>{{ editingId ? 'Editar chiva' : 'Nueva chiva' }}</template>
+        <template #actions>
+          <button type="button" class="icon-btn" aria-label="Cerrar formulario" @click="resetForm">
+            <PhX :size="18" />
           </button>
-          <button
-            @click="deleteChiva(chiva.id)"
-            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
-          >
-            🗑️ Eliminar
-          </button>
-        </div>
-      </div>
+        </template>
+
+        <form class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" @submit.prevent="saveChiva">
+          <div class="sm:col-span-2">
+            <label for="chiva-nombre" class="field-label">Nombre</label>
+            <input id="chiva-nombre" ref="firstField" v-model="nombre" class="field-control" placeholder="Ej.: La Bañeña" />
+          </div>
+          <div>
+            <label for="chiva-placa" class="field-label">Placa</label>
+            <input id="chiva-placa" v-model="placa" class="field-control uppercase placeholder:normal-case" placeholder="Ej.: TBA-1234" />
+          </div>
+          <div>
+            <label for="chiva-codigo" class="field-label">Código interno</label>
+            <input id="chiva-codigo" v-model="codigo" class="field-control" placeholder="Ej.: CH-01" />
+          </div>
+          <div>
+            <label for="chiva-capacidad" class="field-label">Capacidad</label>
+            <input id="chiva-capacidad" v-model="capacidad" type="number" min="1" class="field-control tabular-nums" />
+            <p class="field-hint">Asientos para pasajeros.</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 sm:col-span-2 lg:col-span-4">
+            <BaseButton type="submit">{{ editingId ? 'Guardar cambios' : 'Guardar chiva' }}</BaseButton>
+            <BaseButton variant="ghost" @click="resetForm">Cancelar</BaseButton>
+          </div>
+        </form>
+      </BaseCard>
+
+      <!-- Lista -->
+      <ul v-if="chivas.length" class="grid gap-4 md:grid-cols-2">
+        <li v-for="chiva in chivas" :key="chiva.id"
+          class="flex items-start gap-4 rounded-[var(--radius-card)] border bg-white p-5 transition-colors"
+          :class="editingId === chiva.id ? 'border-brand-300 ring-2 ring-brand-100' : 'border-gray-200'">
+          <span class="inline-flex size-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
+            <PhBus :size="22" />
+          </span>
+
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="truncate text-base font-semibold text-gray-900">{{ chiva.name }}</p>
+              <span v-if="chiva.code" class="rounded-md bg-gray-100 px-1.5 py-0.5 text-xs font-semibold text-gray-700">{{ chiva.code }}</span>
+            </div>
+            <dl class="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-gray-700">
+              <div class="flex items-center gap-1.5">
+                <dt class="sr-only">Placa</dt>
+                <PhIdentificationCard :size="16" class="text-gray-500" aria-hidden="true" />
+                <dd class="font-medium uppercase tabular-nums">{{ chiva.plate }}</dd>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <dt class="sr-only">Capacidad</dt>
+                <PhUsersThree :size="16" class="text-gray-500" aria-hidden="true" />
+                <dd><span class="font-semibold tabular-nums text-gray-900">{{ chiva.capacity }}</span> asientos</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="-mr-1 -mt-1 flex shrink-0 items-center">
+            <button type="button" class="icon-btn" :aria-label="`Editar ${chiva.name}`" title="Editar" @click="editChiva(chiva)">
+              <PhPencilSimple :size="18" />
+            </button>
+            <button type="button" class="icon-btn icon-btn--danger" :aria-label="`Eliminar ${chiva.name}`" title="Eliminar" @click="deleteChiva(chiva.id)">
+              <PhTrash :size="18" />
+            </button>
+          </div>
+        </li>
+      </ul>
+
+      <BaseCard v-else-if="!showForm">
+        <EmptyState :icon="PhBus" title="Aún no registras chivas"
+          description="Agrega tu primera chiva para poder asignarla a las salidas de tus tours.">
+          <BaseButton @click="openNew"><PhPlus :size="18" weight="bold" /> Nueva chiva</BaseButton>
+        </EmptyState>
+      </BaseCard>
     </div>
-    <p v-else class="text-gray-500 text-center italic">
-      🚫 No tienes chivas registradas.
-    </p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, nextTick } from "vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
+import BaseButton from "@/components/ui/BaseButton.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import { PhBus, PhPlus, PhX, PhPencilSimple, PhTrash, PhIdentificationCard, PhUsersThree } from "@phosphor-icons/vue";
 
 const auth = useAuthStore();
 
@@ -107,8 +111,22 @@ const codigo = ref("");
 const capacidad = ref(40);
 const chivas = ref([]);
 const editingId = ref(null);
+const showForm = ref(false);
+const firstField = ref(null);
 
-// 🔹 Cargar solo chivas del dueño
+const focusForm = async () => {
+  await nextTick();
+  firstField.value?.focus();
+  firstField.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+};
+
+const openNew = () => {
+  resetForm();
+  showForm.value = true;
+  focusForm();
+};
+
+// Cargar solo chivas del dueño
 const fetchChivas = async () => {
   if (!auth.user) return;
 
@@ -124,14 +142,14 @@ const fetchChivas = async () => {
   }
 };
 
-// 🔹 Guardar o actualizar
+// Guardar o actualizar
 const saveChiva = async () => {
   if (!nombre.value || !placa.value || !codigo.value) {
     alert("Por favor completa todos los campos.");
     return;
   }
   if (!auth.user) {
-    alert("⚠️ Debes iniciar sesión para guardar chivas.");
+    alert("Debes iniciar sesión para guardar chivas.");
     return;
   }
 
@@ -172,24 +190,27 @@ const saveChiva = async () => {
   fetchChivas();
 };
 
-// 🔹 Editar
+// Editar
 const editChiva = (chiva) => {
   editingId.value = chiva.id;
   nombre.value = chiva.name;
   placa.value = chiva.plate;
   codigo.value = chiva.code;
   capacidad.value = chiva.capacity;
+  showForm.value = true;
+  focusForm();
 };
 
-// 🔹 Eliminar
+// Eliminar
 const deleteChiva = async (id) => {
   if (!confirm("¿Seguro que deseas eliminar esta chiva?")) return;
   await supabase.from("chivas").delete().eq("id", id).eq("user_id", auth.user.id);
   fetchChivas();
 };
 
-// 🔹 Resetear
+// Resetear
 const resetForm = () => {
+  showForm.value = false;
   editingId.value = null;
   nombre.value = "";
   placa.value = "";
@@ -199,3 +220,17 @@ const resetForm = () => {
 
 onMounted(fetchChivas);
 </script>
+
+<style scoped>
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem; height: 2.25rem;
+  border-radius: 8px;
+  color: var(--color-gray-600);
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.icon-btn:hover { background: var(--color-gray-100); color: var(--color-gray-900); }
+.icon-btn--danger:hover { background: var(--color-bad-50); color: var(--color-bad-700); }
+</style>
