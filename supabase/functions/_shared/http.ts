@@ -7,6 +7,7 @@
 const DEFAULT_ORIGINS = [
   "https://chivaspass.com",
   "https://www.chivaspass.com",
+  "https://chivaspass.valentinsil13.workers.dev", // URL de Cloudflare hasta conectar el dominio
   "https://chivaspass.netlify.app", // retirar cuando el dominio apunte a Cloudflare
   "http://localhost:5173",
 ]
