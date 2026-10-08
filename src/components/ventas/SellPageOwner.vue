@@ -1,74 +1,95 @@
 <template>
-  <div class="max-w-7xl mx-auto space-y-8 p-6">
-    <!-- Título -->
-    <h1 class="text-3xl font-extrabold text-center text-gray-800">
-      📊 Mis Ventas (Dueño)
-    </h1>
+  <div>
+    <PageHeader
+      title="Vender boletos"
+      description="Vende en taquilla: elige la salida, marca los asientos y registra el cobro."
+    />
 
-    <!-- Lista de tours -->
-    <BaseCard>
-      <h3 class="font-semibold text-lg mb-6 text-gray-800">
-        Selecciona un Tour
-      </h3>
+    <div class="space-y-6">
+      <!-- 1. Salida -->
+      <BaseCard>
+        <template #title>
+          <span class="flex items-center gap-2.5"><span class="step">1</span> Elige la salida</span>
+        </template>
 
-      <div v-if="loading" class="text-gray-500 italic">⏳ Cargando tours...</div>
-      <div v-else-if="tours.length === 0" class="text-gray-500 text-center py-6">
-        🚫 No hay tours activos.
-      </div>
+        <div v-if="loading" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true">
+          <div v-for="n in 3" :key="n" class="h-28 animate-pulse rounded-lg bg-gray-100" />
+        </div>
 
-      <div v-else class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <BaseCard
-          v-for="tour in tours"
-          :key="tour.id"
-          class="cursor-pointer hover:shadow-lg border hover:border-green-300 transition-all duration-200 rounded-2xl"
-          @click="selectTour(tour)"
-        >
-          <h4 class="font-bold text-xl text-gray-800 mb-1">{{ tour.name }}</h4>
-          <p class="text-sm text-gray-600">🚌 Chiva: <span class="font-medium">{{ tour.chiva }}</span></p>
-          <p class="text-sm text-gray-600">⏰ Hora salida: <span class="font-medium">{{ formatHour(tour.departure_time) }}</span></p>
-          <p class="text-sm text-gray-600">💵 Precio: <span class="font-semibold text-green-600">${{ tour.base_price }}</span></p>
-          <p class="text-xs mt-2">
-            Estado:
-            <span
-              :class="{
-                'text-yellow-600 font-medium': tour.status === 'pendiente',
-                'text-green-600 font-semibold': tour.status === 'en_curso'
-              }"
-            >
-              {{ tour.status }}
-            </span>
-          </p>
-        </BaseCard>
-      </div>
-    </BaseCard>
+        <EmptyState v-else-if="tours.length === 0" :icon="PhCalendarBlank"
+          title="No tienes salidas programadas"
+          description="Programa una salida con chiva y hora para poder vender boletos.">
+          <RouterLink to="/panel/asignar"
+            class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700">
+            <PhPlus :size="18" /> Programar salida
+          </RouterLink>
+        </EmptyState>
 
-    <!-- Selección de asientos -->
-    <BaseCard v-if="selectedTour && !checkoutMode">
-      <h3 class="font-semibold text-lg mb-6 text-gray-800">Selecciona tus Asientos</h3>
-      <SeatGrid
-        :assignedChivaId="selectedTour.id"
-        ref="seatGridRef"
-        @selectSeats="updateSeats"
+        <div v-else class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" role="radiogroup" aria-label="Salidas">
+          <button
+            v-for="tour in tours" :key="tour.id"
+            type="button" role="radio" :aria-checked="selectedTour?.id === tour.id"
+            class="salida group flex flex-col rounded-lg border p-4 text-left transition-colors duration-150"
+            :class="selectedTour?.id === tour.id
+              ? 'border-brand-600 bg-brand-50 ring-1 ring-brand-600'
+              : 'border-gray-200 bg-white hover:border-gray-400'"
+            @click="selectTour(tour)"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-2xl font-bold leading-none text-gray-900 tabular-nums">{{ formatTime(tour.departure_time) }}</p>
+                <p class="mt-1 text-sm font-medium text-gray-600 first-letter:uppercase">{{ formatDay(tour.departure_time) }}</p>
+              </div>
+              <StatusBadge :tone="tour.status === 'en_curso' ? 'success' : 'info'">
+                {{ tour.status === 'en_curso' ? 'En curso' : 'Programada' }}
+              </StatusBadge>
+            </div>
+            <p class="mt-3 font-semibold text-gray-900">{{ tour.name }}</p>
+            <div class="mt-1 flex items-center justify-between gap-3 text-sm text-gray-600">
+              <span class="flex items-center gap-1.5 truncate"><PhBus :size="16" class="shrink-0" /> {{ tour.chiva }}</span>
+              <span class="font-semibold text-gray-900 tabular-nums">${{ Number(tour.base_price).toFixed(2) }}</span>
+            </div>
+          </button>
+        </div>
+      </BaseCard>
+
+      <!-- 2. Asientos -->
+      <BaseCard v-if="selectedTour && !checkoutMode">
+        <template #title>
+          <span class="flex items-center gap-2.5"><span class="step">2</span> Marca los asientos</span>
+        </template>
+        <template #actions>
+          <span class="hidden text-sm text-gray-600 sm:inline">{{ selectedTour.name }} · {{ formatTime(selectedTour.departure_time) }}</span>
+        </template>
+        <SeatGrid
+          :assignedChivaId="selectedTour.id"
+          ref="seatGridRef"
+          @selectSeats="updateSeats"
+        />
+      </BaseCard>
+
+      <!-- 3. Cobro -->
+      <CartModal
+        v-if="selectedSeats.length > 0 && !checkoutMode"
+        :selectedSeats="selectedSeats"
+        :selectedTour="selectedTour"
+        :subtotal="subtotal"
+        @checkout="checkoutMode = true"
       />
-    </BaseCard>
 
-    <!-- Carrito -->
-    <CartModal
-      v-if="selectedSeats.length > 0 && !checkoutMode"
-      :selectedSeats="selectedSeats"
-      :selectedTour="selectedTour"
-      :subtotal="subtotal"
-      @checkout="checkoutMode = true"
-    />
-
-    <!-- Checkout -->
-    <Checkout
-      v-if="checkoutMode"
-      :selectedTour="selectedTour"
-      :selectedSeats="selectedSeats"
-      :total="subtotal"
-      @purchaseConfirmed="resetForm"
-    />
+      <template v-if="checkoutMode">
+        <button type="button" class="inline-flex h-10 items-center gap-1.5 rounded-lg px-2 text-sm font-semibold text-gray-700 hover:bg-gray-100"
+          @click="checkoutMode = false">
+          <PhCaretLeft :size="16" /> Cambiar asientos
+        </button>
+        <Checkout
+          :selectedTour="selectedTour"
+          :selectedSeats="selectedSeats"
+          :total="subtotal"
+          @purchaseConfirmed="resetForm"
+        />
+      </template>
+    </div>
   </div>
 </template>
 
@@ -82,6 +103,10 @@ import SeatGrid from "@/components/asientos/SeatGrid.vue";
 import CartModal from "@/components/CartModal.vue";
 import Checkout from "@/components/Checkout.vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import StatusBadge from "@/components/ui/StatusBadge.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import { PhBus, PhCalendarBlank, PhPlus, PhCaretLeft } from "@phosphor-icons/vue";
 
 const auth = useAuthStore();
 
@@ -115,8 +140,9 @@ const loadTours = async () => {
           name
         )
       `)
-      .eq("tours.user_id", auth.user.id) // 🔹 solo tours creados por este dueño
-      .in("status", ["pendiente", "en_curso"]); // 🔹 solo mostrar activos
+      .eq("tours.user_id", auth.user.id) // solo tours creados por este dueño
+      .in("status", ["pendiente", "en_curso"]) // solo salidas por vender
+      .order("departure_at", { ascending: true });
 
     if (error) throw error;
 
@@ -147,12 +173,17 @@ const loadTours = async () => {
 
 onMounted(loadTours);
 
-const formatHour = (dateTime) => {
-  if (!dateTime) return "Sin hora";
-  return new Date(dateTime).toLocaleString([], {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+const formatTime = (dateTime) =>
+  dateTime ? new Date(dateTime).toLocaleTimeString("es-EC", { hour: "2-digit", minute: "2-digit" }) : "Sin hora";
+
+const formatDay = (dateTime) => {
+  if (!dateTime) return "";
+  const d = new Date(dateTime);
+  const today = new Date();
+  const tomorrow = new Date(); tomorrow.setDate(today.getDate() + 1);
+  if (d.toDateString() === today.toDateString()) return "hoy";
+  if (d.toDateString() === tomorrow.toDateString()) return "mañana";
+  return d.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "short" });
 };
 
 const selectTour = (tour) => {
@@ -160,7 +191,7 @@ const selectTour = (tour) => {
   selectedSeats.value = [];
   checkoutMode.value = false;
 
-  // 🔹 recargar asientos si cambia de tour
+  // recargar asientos si cambia de salida
   if (seatGridRef.value) seatGridRef.value.refreshSeats();
 };
 
@@ -181,3 +212,16 @@ const resetForm = () => {
   if (seatGridRef.value) seatGridRef.value.refreshSeats();
 };
 </script>
+<style scoped>
+.step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem; height: 1.5rem;
+  border-radius: 999px;
+  background: var(--color-gray-900);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+</style>

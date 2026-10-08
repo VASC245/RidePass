@@ -2,6 +2,123 @@
 
 @theme {
   --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  /* Naranja de marca. Parte del #F77F00 del logo, girado un poco hacia el
+     rojo y más profundo en los tonos de acción para que el texto blanco
+     cumpla AA (brand-600 sobre blanco: 4.5:1). */
+  --color-brand-50:  oklch(0.97 0.02 55);
+  --color-brand-100: oklch(0.94 0.045 55);
+  --color-brand-200: oklch(0.88 0.085 53);
+  --color-brand-300: oklch(0.8 0.13 52);
+  --color-brand-400: oklch(0.72 0.17 50);
+  --color-brand-500: oklch(0.66 0.19 47);
+  --color-brand-600: oklch(0.585 0.18 44);
+  --color-brand-700: oklch(0.52 0.16 42);
+  --color-brand-800: oklch(0.44 0.13 40);
+  --color-brand-900: oklch(0.36 0.1 40);
+
+  /* Neutros con un toque del tono de marca. Reemplazan la escala gray de
+     Tailwind para que todo el sistema comparta la misma temperatura. */
+  --color-gray-50:  oklch(0.975 0.004 60);
+  --color-gray-100: oklch(0.955 0.005 60);
+  --color-gray-200: oklch(0.91 0.006 60);
+  --color-gray-300: oklch(0.85 0.008 58);
+  --color-gray-400: oklch(0.68 0.008 55);
+  --color-gray-500: oklch(0.55 0.01 50);
+  --color-gray-600: oklch(0.47 0.012 50);
+  --color-gray-700: oklch(0.38 0.012 50);
+  --color-gray-800: oklch(0.29 0.012 50);
+  --color-gray-900: oklch(0.22 0.012 50);
+  --color-gray-950: oklch(0.17 0.01 50);
+
+  /* Barra lateral: el "volcán" oscuro donde vive el logo. */
+  --color-side:        oklch(0.215 0.012 45);
+  --color-side-hover:  oklch(0.27 0.014 45);
+  --color-side-active: oklch(0.31 0.03 45);
+  --color-side-text:   oklch(0.86 0.01 60);
+  --color-side-mute:   oklch(0.7 0.012 55);
+
+  /* Estados (texto 700 sobre fondo 50: ≥ 5.2:1). */
+  --color-ok-50:    oklch(0.96 0.03 150);
+  --color-ok-200:   oklch(0.87 0.07 150);
+  --color-ok-600:   oklch(0.56 0.13 150);
+  --color-ok-700:   oklch(0.5 0.12 150);
+  --color-warn-50:  oklch(0.965 0.04 85);
+  --color-warn-200: oklch(0.88 0.09 85);
+  --color-warn-600: oklch(0.62 0.13 75);
+  --color-warn-700: oklch(0.52 0.11 75);
+  --color-bad-50:   oklch(0.96 0.025 25);
+  --color-bad-200:  oklch(0.86 0.07 25);
+  --color-bad-600:  oklch(0.58 0.2 27);
+  --color-bad-700:  oklch(0.52 0.18 27);
+  --color-info-50:  oklch(0.96 0.02 240);
+  --color-info-200: oklch(0.86 0.06 240);
+  --color-info-700: oklch(0.5 0.11 240);
+
+  --radius-card: 12px;
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+@layer base {
+  /* Tailwind 4 deja `border` en currentColor; en esta app un borde sin
+     color siempre significa la línea neutra. */
+  *, ::after, ::before, ::backdrop, ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-600);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Campos de formulario del panel: <input>, <select> y <textarea>.
+     Uso: class="field-control"; etiqueta con class="field-label". */
+  .field-label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-gray-800);
+  }
+  .field-hint {
+    margin-top: 0.375rem;
+    font-size: 0.8125rem;
+    color: var(--color-gray-600);
+  }
+  .field-control {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.625rem 0.875rem;
+    border: 1px solid var(--color-gray-300);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 0.9375rem;
+    color: var(--color-gray-900);
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+  }
+  .field-control::placeholder { color: var(--color-gray-500); }
+  .field-control:hover { border-color: var(--color-gray-400); }
+  .field-control:focus {
+    outline: none;
+    border-color: var(--color-brand-600);
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-brand-500) 22%, transparent);
+  }
+  .field-control:disabled { background: var(--color-gray-100); color: var(--color-gray-500); cursor: not-allowed; }
+  .field-control--error, .field-control[aria-invalid="true"] { border-color: var(--color-bad-600); }
+  .field-control--error:focus, .field-control[aria-invalid="true"]:focus {
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-bad-600) 20%, transparent);
+  }
+  .field-control--success { border-color: var(--color-ok-600); }
+  select.field-control {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23615955' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+  }
+  textarea.field-control { min-height: 6rem; resize: vertical; }
 }
 
 html {
@@ -11,9 +128,17 @@ html {
 body {
   font-family: var(--font-sans);
   background: #ffffff;
-  color: #16181d;
+  color: var(--color-gray-900);
   -webkit-font-smoothing: antialiased;
 }
 
 /* Wordmark del logo (Sora 800). Cae a Archivo si la fuente no carga. */
 .font-brand { font-family: 'Sora', 'Archivo', system-ui, sans-serif; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

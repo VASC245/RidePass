@@ -1,62 +1,66 @@
 <template>
-  <BaseCard class="max-w-2xl mx-auto p-6">
-    <h2 class="text-xl font-bold text-gray-900 mb-1">Datos del pasajero</h2>
-    <p class="text-sm text-gray-500 mb-6">
-      {{ isOwner ? "Venta directa en efectivo. Los asientos quedan pagados al confirmar." : "Después de estos datos subirás el comprobante de la transferencia." }}
-    </p>
-
+  <BaseCard class="w-full">
     <!-- FORMULARIO -->
-    <form v-if="!result" class="space-y-5" @submit.prevent="submit">
-      <div class="grid sm:grid-cols-2 gap-4">
-        <BaseInput id="customerName"    v-model.trim="form.name"    required placeholder="Nombre completo" />
-        <BaseInput id="customerCedula"  v-model.trim="form.cedula"  required placeholder="Cédula o pasaporte" />
-        <BaseInput id="customerPhone"   v-model.trim="form.phone"   required placeholder="Teléfono" />
-        <BaseInput id="customerEmail"   v-model.trim="form.email"   type="email" required placeholder="Correo" />
-      </div>
-      <BaseInput id="customerAddress" v-model.trim="form.address" placeholder="Dirección (opcional)" />
-
-      <div class="bg-gray-50 p-4 border border-gray-200 rounded-xl text-sm text-gray-700 space-y-1">
-        <p class="flex justify-between"><span class="text-gray-500">Tour</span><strong>{{ selectedTour?.name }}</strong></p>
-        <p class="flex justify-between"><span class="text-gray-500">Chiva</span><strong>{{ selectedTour?.chiva }}</strong></p>
-        <p class="flex justify-between"><span class="text-gray-500">Salida</span><strong>{{ formatHour(selectedTour?.departure_time) }}</strong></p>
-        <p class="flex justify-between"><span class="text-gray-500">Asientos</span><strong>{{ selectedSeats.join(", ") }}</strong></p>
-        <p class="flex justify-between border-t border-gray-200 pt-2 mt-1"><span class="text-gray-500">Total</span><strong class="text-lg">${{ Number(total).toFixed(2) }}</strong></p>
+    <form v-if="!result" class="space-y-5" novalidate @submit.prevent="submit">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900">Datos del pasajero</h2>
+        <p class="mt-1 text-sm text-gray-600">
+          {{ isOwner ? "Venta directa en efectivo. Los asientos quedan pagados al confirmar." : "Después de estos datos subirás el comprobante de la transferencia." }}
+        </p>
       </div>
 
-      <p v-if="error" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ error }}</p>
+      <div class="grid gap-4 sm:grid-cols-2">
+        <BaseInput name="customerName"   label="Nombre completo"     v-model.trim="form.name"   required autocomplete="name" />
+        <BaseInput name="customerCedula" label="Cédula o pasaporte"  v-model.trim="form.cedula" required />
+        <BaseInput name="customerPhone"  label="Teléfono / WhatsApp" v-model.trim="form.phone"  required type="tel" autocomplete="tel" placeholder="+593 99 999 9999" />
+        <BaseInput name="customerEmail"  label="Correo"              v-model.trim="form.email"  required type="email" autocomplete="email" placeholder="nombre@correo.com" />
+      </div>
+      <BaseInput name="customerAddress" label="Dirección (opcional)" v-model.trim="form.address" autocomplete="street-address" />
 
-      <BaseButton full type="submit" :disabled="busy">
-        {{ busy ? "Registrando..." : (isOwner ? "Confirmar venta en efectivo" : "Continuar al comprobante") }}
+      <dl class="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Tour</dt><dd class="text-right font-semibold text-gray-900">{{ selectedTour?.name }}</dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Chiva</dt><dd class="text-right font-semibold text-gray-900">{{ selectedTour?.chiva }}</dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Salida</dt><dd class="text-right font-semibold text-gray-900">{{ formatHour(selectedTour?.departure_time) }}</dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Asientos</dt><dd class="text-right font-semibold text-gray-900 tabular-nums">{{ selectedSeats.join(", ") }}</dd></div>
+        <div class="flex items-baseline justify-between gap-4 bg-gray-50 px-4 py-3"><dt class="font-medium text-gray-700">Total</dt><dd class="text-xl font-bold text-gray-900 tabular-nums">${{ Number(total).toFixed(2) }}</dd></div>
+      </dl>
+
+      <p v-if="error" role="alert" class="flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-4 py-3 text-sm text-bad-700">
+        <PhWarningCircle :size="18" class="mt-px shrink-0" /> {{ error }}
+      </p>
+
+      <BaseButton block size="lg" type="submit" :loading="busy">
+        {{ busy ? "Registrando venta" : (isOwner ? "Confirmar venta en efectivo" : "Continuar al comprobante") }}
       </BaseButton>
     </form>
 
     <!-- RESULTADO -->
-    <div v-else class="text-center space-y-5">
-      <div class="w-14 h-14 mx-auto rounded-full bg-green-100 flex items-center justify-center">
-        <PhCheckCircle :size="30" weight="fill" class="text-green-600" />
-      </div>
+    <div v-else class="space-y-5 py-2 text-center">
+      <span class="mx-auto inline-flex size-14 items-center justify-center rounded-full bg-ok-50 text-ok-700">
+        <PhCheckCircle :size="32" weight="fill" />
+      </span>
       <div>
-        <h3 class="text-lg font-bold text-gray-900">
+        <h2 class="text-lg font-semibold text-gray-900">
           {{ result.status === "pagado" ? "Venta confirmada" : "Reserva registrada" }}
-        </h3>
-        <p class="text-sm text-gray-500 mt-1">
+        </h2>
+        <p class="mx-auto mt-1 max-w-[44ch] text-sm text-gray-600">
           {{ result.status === "pagado"
             ? "El ticket ya está activo para el embarque."
             : "Los asientos quedan reservados hasta que el dueño verifique el comprobante." }}
         </p>
       </div>
 
-      <div class="bg-gray-50 rounded-2xl p-5 inline-block">
-        <img :src="qrCodeUrl" class="w-48 mx-auto rounded-lg" alt="Código QR del ticket" />
-        <p class="text-xs text-gray-400 mt-2">Se envió una copia al correo del pasajero</p>
-      </div>
+      <figure class="inline-block rounded-[var(--radius-card)] border border-gray-200 bg-white p-4">
+        <img :src="qrCodeUrl" class="mx-auto w-48" alt="Código QR del ticket" />
+        <figcaption class="mt-2 text-xs text-gray-600">Se envió una copia al correo del pasajero</figcaption>
+      </figure>
 
-      <div class="flex flex-col sm:flex-row gap-3 justify-center">
+      <div class="flex flex-col justify-center gap-3 sm:flex-row">
         <a v-if="result.ticketUrl" :href="result.ticketUrl" target="_blank" rel="noopener"
-          class="px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50">
-          Abrir ticket
+          class="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-800 hover:bg-gray-50">
+          Abrir ticket <PhArrowSquareOut :size="16" />
         </a>
-        <BaseButton @click="emit('purchaseConfirmed')">Nueva venta</BaseButton>
+        <BaseButton @click="emit('purchaseConfirmed')">Hacer otra venta</BaseButton>
       </div>
     </div>
 
@@ -72,7 +76,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import QRCode from "qrcode";
-import { PhCheckCircle } from "@phosphor-icons/vue";
+import { PhCheckCircle, PhWarningCircle, PhArrowSquareOut } from "@phosphor-icons/vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
 import { reserveTour } from "@/lib/reservations";

@@ -1,123 +1,114 @@
 <template>
-  <div class="flex h-screen bg-gray-100 font-inter">
-    <!-- Sidebar escritorio -->
-    <aside
-      class="hidden md:flex md:flex-col w-64 bg-white border-r shadow-xl p-6 rounded-tr-3xl rounded-br-3xl transition-all duration-300"
-    >
-      <!-- Branding -->
-      <div class="mb-10 px-1">
-        <BrandLogo :size="28" variant="dark" />
+  <div class="min-h-dvh bg-gray-50 md:flex">
+    <!-- Barra lateral de escritorio -->
+    <aside class="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-dvh bg-side text-side-text">
+      <div class="px-5 pt-6 pb-7">
+        <RouterLink :to="homePath" class="inline-flex rounded-md">
+          <BrandLogo :size="26" variant="onDark" />
+        </RouterLink>
       </div>
 
-      <!-- Menú -->
-      <nav class="flex-1 space-y-2">
-        <RouterLink
-          v-for="item in menuItems"
-          :key="item.path"
-          :to="item.path"
-          class="flex items-center space-x-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 hover:bg-gray-100 text-gray-700"
-          active-class="bg-gray-200 text-gray-900 font-semibold shadow-sm"
-        >
-          <span>{{ item.label }}</span>
-        </RouterLink>
+      <nav class="flex-1 overflow-y-auto px-3 pb-4" aria-label="Menú del panel">
+        <div v-for="group in menuGroups" :key="group.title || 'main'" class="mb-5 last:mb-0">
+          <p v-if="group.title" class="px-3 mb-1.5 text-xs font-medium text-side-mute">{{ group.title }}</p>
+          <ul class="space-y-0.5">
+            <li v-for="item in group.items" :key="item.path">
+              <RouterLink :to="item.path" class="nav-item" active-class="nav-item--active">
+                <component :is="item.icon" :size="19" class="nav-icon shrink-0" />
+                <span class="truncate">{{ item.label }}</span>
+                <span class="nav-dot" aria-hidden="true" />
+              </RouterLink>
+            </li>
+          </ul>
+        </div>
       </nav>
 
-      <!-- Footer -->
-      <div class="border-t mt-6 pt-4">
-        <p class="text-sm text-gray-500 mb-2 font-medium">
-          {{ user?.full_name }}
-        </p>
-        <button
-          @click="logout"
-          class="w-full py-2 rounded-xl font-semibold transition-all shadow-sm"
-          :class="'bg-gray-900 hover:bg-gray-800 text-white'"
-        >
-          Cerrar sesión
-        </button>
+      <div class="border-t border-white/10 p-3">
+        <div class="flex items-center gap-3 px-2 py-2">
+          <span class="avatar">{{ initials }}</span>
+          <div class="min-w-0 flex-1">
+            <p class="truncate text-sm font-semibold text-white">{{ user?.full_name || 'Mi cuenta' }}</p>
+            <p class="text-xs text-side-mute">{{ roleLabel }}</p>
+          </div>
+          <button type="button" class="side-icon-btn" title="Cerrar sesión" aria-label="Cerrar sesión" @click="logout">
+            <PhSignOut :size="19" />
+          </button>
+        </div>
       </div>
     </aside>
 
-    <!-- Sidebar móvil -->
-    <transition name="slide">
-      <aside
-        v-if="mobileOpen"
-        class="fixed inset-0 bg-black bg-opacity-40 flex md:hidden z-50"
-        @click.self="mobileOpen = false"
-      >
-        <div
-          class="w-64 h-full bg-white p-6 shadow-2xl rounded-tr-3xl rounded-br-3xl flex flex-col"
-        >
-          <div class="flex items-center justify-between mb-8">
-            <BrandLogo :size="24" variant="dark" />
-            <button
-              @click="mobileOpen = false"
-              class="text-gray-600 text-2xl hover:text-red-500"
-            ><PhX :size="22" /></button>
+    <!-- Barra superior móvil -->
+    <header class="md:hidden sticky top-0 z-30 flex h-14 items-center justify-between bg-side px-4 text-side-text">
+      <RouterLink :to="homePath" class="inline-flex rounded-md">
+        <BrandLogo :size="22" variant="onDark" />
+      </RouterLink>
+      <button type="button" class="side-icon-btn -mr-2" aria-label="Abrir menú" :aria-expanded="mobileOpen" @click="mobileOpen = true">
+        <PhList :size="24" />
+      </button>
+    </header>
+
+    <!-- Menú móvil -->
+    <Transition name="drawer">
+      <div v-if="mobileOpen" class="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Menú del panel">
+        <div class="drawer-backdrop absolute inset-0 bg-black/45" @click="mobileOpen = false" />
+        <div class="drawer-panel relative flex h-full w-[min(18rem,85vw)] flex-col bg-side text-side-text">
+          <div class="flex h-14 items-center justify-between px-4">
+            <BrandLogo :size="22" variant="onDark" />
+            <button type="button" class="side-icon-btn -mr-2" aria-label="Cerrar menú" @click="mobileOpen = false">
+              <PhX :size="22" />
+            </button>
           </div>
 
-          <nav class="flex-1 space-y-2 overflow-y-auto">
-            <RouterLink
-              v-for="item in menuItems"
-              :key="item.path"
-              :to="item.path"
-              @click="mobileOpen = false"
-              class="block px-4 py-3 rounded-lg font-medium text-gray-700 hover:bg-gray-100 transition"
-              active-class="bg-gray-200 text-gray-900 font-semibold shadow-sm"
-            >
-              {{ item.label }}
-            </RouterLink>
+          <nav class="flex-1 overflow-y-auto px-3 py-3" aria-label="Menú del panel">
+            <div v-for="group in menuGroups" :key="group.title || 'main'" class="mb-5 last:mb-0">
+              <p v-if="group.title" class="px-3 mb-1.5 text-xs font-medium text-side-mute">{{ group.title }}</p>
+              <ul class="space-y-0.5">
+                <li v-for="item in group.items" :key="item.path">
+                  <RouterLink :to="item.path" class="nav-item nav-item--touch" active-class="nav-item--active" @click="mobileOpen = false">
+                    <component :is="item.icon" :size="20" class="nav-icon shrink-0" />
+                    <span class="truncate">{{ item.label }}</span>
+                    <span class="nav-dot" aria-hidden="true" />
+                  </RouterLink>
+                </li>
+              </ul>
+            </div>
           </nav>
 
-          <div class="border-t mt-6 pt-4">
-            <button
-              @click="logout"
-              class="w-full py-2 rounded-lg font-semibold text-white transition-all"
-              :class="'bg-gray-900 hover:bg-gray-800'"
-            >
-              Cerrar sesión
+          <div class="border-t border-white/10 p-3">
+            <div class="flex items-center gap-3 px-2 py-2">
+              <span class="avatar">{{ initials }}</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-semibold text-white">{{ user?.full_name || 'Mi cuenta' }}</p>
+                <p class="text-xs text-side-mute">{{ roleLabel }}</p>
+              </div>
+            </div>
+            <button type="button" class="mt-1 flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-side-hover text-sm font-semibold text-white transition-colors hover:bg-side-active" @click="logout">
+              <PhSignOut :size="18" /> Cerrar sesión
             </button>
           </div>
         </div>
-      </aside>
-    </transition>
+      </div>
+    </Transition>
 
-    <!-- Contenido principal -->
-    <div class="flex-1 flex flex-col">
-      <!-- Header -->
-      <header
-        class="bg-white border-b px-6 py-4 flex items-center justify-between shadow-sm"
-      >
-        <h1 class="text-xl font-bold text-gray-800 tracking-tight">
-          {{ user?.role === 'dueño'
-            ? 'Panel del dueño'
-            : user?.role === 'conductor'
-            ? 'Panel del conductor'
-            : user?.role === 'negocio'
-            ? 'Panel del negocio'
-            : 'Panel de agencia' }}
-        </h1>
-
-        <!-- Botón menú móvil -->
-        <button
-          @click="mobileOpen = true"
-          class="md:hidden text-gray-600 focus:outline-none"
-        ><PhList :size="28" /></button>
-      </header>
-
-      <!-- Main -->
-      <main class="flex-1 p-8 overflow-y-auto bg-gray-50">
+    <!-- Contenido -->
+    <main class="min-w-0 flex-1">
+      <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-9">
         <RouterView />
-      </main>
-    </div>
+      </div>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 import BrandLogo from "@/components/ui/BrandLogo.vue";
-import { PhList, PhX } from "@phosphor-icons/vue";
+import {
+  PhList, PhX, PhSignOut, PhSquaresFour, PhMapTrifold, PhPlusCircle, PhCalendarBlank,
+  PhBus, PhSteeringWheel, PhChartLineUp, PhReceipt, PhQrCode, PhGearSix, PhStack,
+  PhTicket, PhStorefront, PhCalendarCheck,
+} from "@phosphor-icons/vue";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -125,45 +116,88 @@ const authStore = useAuthStore();
 const user = computed(() => authStore.user);
 const mobileOpen = ref(false);
 
-const menuItems = computed(() => {
-  if (user.value?.role ==="dueño") {
-    return [
-      { label: "Dashboard",           path: "/panel/dashboard" },
-      { label: "Mis Chivas",          path: "/panel/chivas" },
-      { label: "Conductores",         path: "/panel/conductores" },
-      { label: "Tours",               path: "/panel/tours" },
-      { label: "Gestión de Tours",    path: "/panel/nuevo-tour" },
-      { label: "Asignar Salidas",     path: "/panel/asignar" },
-      { label: "Comprobantes",        path: "/panel/pagos" },
-      { label: "Embarque (Escanear)", path: "/panel/embarque" },
-      { label: "Mis Ventas",          path: "/panel/mis-ventas" },
-      { label: "Configuración",   path: "/panel/configuracion" },
-      { label: "Planes",          path: "/panel/planes" },
-    ];
-  } else if (user.value?.role ==="agencia") {
-    return [
-      { label: "Tours Disponibles",  path: "/panel/tours-disponibles" },
-      { label: "Vender Boletos",     path: "/panel/vender-boletos" },
-      { label: "Configuración",   path: "/panel/configuracion" },
-      { label: "Planes",          path: "/panel/planes" },
-    ];
-  } else if (user.value?.role ==="conductor") {
-    return [
-      { label: "Mis Tours",    path: "/panel/mis-tours" },
-      { label: "Escanear QR", path: "/panel/escanear" },
-    ];
-  } else if (user.value?.role ==="negocio") {
-    return [
-      { label: "Dashboard",          path: "/panel/negocio-dashboard" },
-      { label: "Mi Negocio",         path: "/panel/negocio-perfil" },
-      { label: "Eventos",            path: "/panel/negocio-eventos" },
-      { label: "Tickets",            path: "/panel/negocio-tickets" },
-      { label: "Escanear QR",        path: "/panel/negocio-escanear" },
-      { label: "Configuración",   path: "/panel/configuracion" },
-      { label: "Planes",          path: "/panel/planes" },
-    ];
+const ROLE_LABELS = { "dueño": "Dueño de chiva", agencia: "Agencia", conductor: "Conductor", negocio: "Negocio" };
+const roleLabel = computed(() => ROLE_LABELS[user.value?.role] ?? "Panel");
+
+const initials = computed(() => {
+  const parts = (user.value?.full_name || "").trim().split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "CP";
+});
+
+const ACCOUNT = {
+  title: "Cuenta",
+  items: [
+    { label: "Configuración", path: "/panel/configuracion", icon: PhGearSix },
+    { label: "Planes",        path: "/panel/planes",        icon: PhStack },
+  ],
+};
+
+const menuGroups = computed(() => {
+  switch (user.value?.role) {
+    case "dueño":
+      return [
+        { title: "", items: [
+          { label: "Resumen", path: "/panel/dashboard", icon: PhSquaresFour },
+        ] },
+        { title: "Operación", items: [
+          { label: "Tours",            path: "/panel/tours",       icon: PhMapTrifold },
+          { label: "Crear o editar tour", path: "/panel/nuevo-tour", icon: PhPlusCircle },
+          { label: "Salidas",          path: "/panel/asignar",     icon: PhCalendarBlank },
+          { label: "Chivas",           path: "/panel/chivas",      icon: PhBus },
+          { label: "Conductores",      path: "/panel/conductores", icon: PhSteeringWheel },
+        ] },
+        { title: "Ventas", items: [
+          { label: "Ventas",       path: "/panel/mis-ventas", icon: PhChartLineUp },
+          { label: "Comprobantes", path: "/panel/pagos",      icon: PhReceipt },
+          { label: "Embarque",     path: "/panel/embarque",   icon: PhQrCode },
+        ] },
+        ACCOUNT,
+      ];
+    case "agencia":
+      return [
+        { title: "", items: [
+          { label: "Vender boletos",    path: "/panel/vender-boletos",    icon: PhTicket },
+          { label: "Tours disponibles", path: "/panel/tours-disponibles", icon: PhMapTrifold },
+        ] },
+        ACCOUNT,
+      ];
+    case "conductor":
+      return [
+        { title: "", items: [
+          { label: "Mis salidas", path: "/panel/mis-tours", icon: PhCalendarCheck },
+          { label: "Escanear QR", path: "/panel/escanear",  icon: PhQrCode },
+        ] },
+      ];
+    case "negocio":
+      return [
+        { title: "", items: [
+          { label: "Resumen", path: "/panel/negocio-dashboard", icon: PhSquaresFour },
+        ] },
+        { title: "Mi negocio", items: [
+          { label: "Perfil",      path: "/panel/negocio-perfil",   icon: PhStorefront },
+          { label: "Eventos",     path: "/panel/negocio-eventos",  icon: PhCalendarBlank },
+          { label: "Tickets",     path: "/panel/negocio-tickets",  icon: PhTicket },
+          { label: "Escanear QR", path: "/panel/negocio-escanear", icon: PhQrCode },
+        ] },
+        ACCOUNT,
+      ];
+    default:
+      return [];
   }
-  return [];
+});
+
+const homePath = computed(() => menuGroups.value[0]?.items[0]?.path ?? "/panel");
+
+// Escape cierra el menú móvil y bloquea el scroll del fondo mientras está abierto
+const onKey = (e) => { if (e.key === "Escape") mobileOpen.value = false; };
+watch(mobileOpen, (open) => {
+  document.body.style.overflow = open ? "hidden" : "";
+  if (open) window.addEventListener("keydown", onKey);
+  else window.removeEventListener("keydown", onKey);
+});
+onBeforeUnmount(() => {
+  document.body.style.overflow = "";
+  window.removeEventListener("keydown", onKey);
 });
 
 const logout = async () => {
@@ -173,16 +207,63 @@ const logout = async () => {
 </script>
 
 <style scoped>
-.slide-enter-active,
-.slide-leave-active {
-  transition: all 0.3s ease;
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--color-side-text);
+  transition: background-color 150ms var(--ease-out-quart), color 150ms var(--ease-out-quart);
 }
-.slide-enter-from {
-  transform: translateX(-100%);
+.nav-item--touch { height: 2.75rem; }
+.nav-item:hover { background: var(--color-side-hover); color: #fff; }
+.nav-icon { color: var(--color-side-mute); transition: color 150ms var(--ease-out-quart); }
+.nav-item:hover .nav-icon { color: var(--color-side-text); }
+
+/* Activo: el punto naranja es el remate de la curva del logo */
+.nav-dot {
+  margin-left: auto;
+  width: 6px; height: 6px;
+  border-radius: 999px;
+  background: var(--color-brand-400);
   opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 200ms var(--ease-out-quart), transform 200ms var(--ease-out-quart);
 }
-.slide-leave-to {
-  transform: translateX(-100%);
-  opacity: 0;
+.nav-item--active { background: var(--color-side-active); color: #fff; font-weight: 600; }
+.nav-item--active .nav-icon { color: var(--color-brand-400); }
+.nav-item--active .nav-dot { opacity: 1; transform: scale(1); }
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem; height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--color-brand-600);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
 }
+
+.side-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem; height: 2.5rem;
+  border-radius: 8px;
+  color: var(--color-side-mute);
+  transition: background-color 150ms var(--ease-out-quart), color 150ms var(--ease-out-quart);
+}
+.side-icon-btn:hover { background: var(--color-side-hover); color: #fff; }
+
+.drawer-enter-active, .drawer-leave-active { transition: opacity 220ms var(--ease-out-quart); }
+.drawer-enter-active .drawer-panel, .drawer-leave-active .drawer-panel { transition: transform 260ms var(--ease-out-quart); }
+.drawer-enter-from, .drawer-leave-to { opacity: 0; }
+.drawer-enter-from .drawer-panel, .drawer-leave-to .drawer-panel { transform: translateX(-100%); }
 </style>
