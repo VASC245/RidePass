@@ -6,6 +6,9 @@
 //   supabase secrets set ALLOWED_ORIGINS=https://tudominio.com,http://localhost:5173
 const DEFAULT_ORIGINS = ["https://chivaspass.netlify.app", "http://localhost:5173"]
 const PREVIEW_RE = /^https:\/\/[a-z0-9-]+--chivaspass\.netlify\.app$/
+// Dev server local en cualquier puerto: Vite salta a 5174, 5175... cuando
+// el 5173 está ocupado, y sin esto el navegador bloquea el preflight.
+const LOCAL_RE = /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/
 
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
   .split(",")
@@ -14,7 +17,7 @@ const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
 const ORIGINS = ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : DEFAULT_ORIGINS
 
 export function originAllowed(origin: string): boolean {
-  return ORIGINS.includes(origin) || PREVIEW_RE.test(origin)
+  return ORIGINS.includes(origin) || PREVIEW_RE.test(origin) || LOCAL_RE.test(origin)
 }
 
 // Devuelve las cabeceras CORS para la petición.
