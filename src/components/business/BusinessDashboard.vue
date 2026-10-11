@@ -2,8 +2,6 @@
   <div class="space-y-6">
     <h2 class="text-2xl font-bold text-gray-800">Panel de mi Negocio</h2>
 
-    <UpgradeBanner :tickets-used="stats.tickets" :events-active="stats.activeEvents" />
-
     <!-- KPIs -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="bg-white rounded-2xl p-5 shadow-sm border">
@@ -58,7 +56,6 @@
 import { ref, onMounted } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
-import UpgradeBanner from '@/components/shared/UpgradeBanner.vue'
 
 const authStore = useAuthStore()
 const loading = ref(true)
