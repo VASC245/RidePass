@@ -87,6 +87,7 @@ const routes = [
       { path: "negocio-escanear",  name: "NegocioScan",      component: lazy(() => import("@/components/business/BusinessScan.vue")),      meta: { roles: BUSINESS } },
       // Configuración y planes — todos los roles del panel
       { path: "configuracion", name: "Configuracion", component: lazy(() => import("@/components/shared/SettingsPanel.vue")), meta: { roles: ANY_PANEL } },
+      { path: "estado-de-cuenta", name: "EstadoDeCuenta", component: lazy(() => import("@/components/shared/StatementPage.vue")), meta: { roles: [...OWNER, ...BUSINESS] } },
       { path: "planes",        name: "Planes",        component: lazy(() => import("@/components/shared/PlansPage.vue")),     meta: { roles: ANY_PANEL } },
     ],
   },

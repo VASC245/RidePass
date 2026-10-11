@@ -1,6 +1,6 @@
 <template>
   <div v-if="notice"
-    class="mb-6 flex flex-col items-start justify-between gap-4 rounded-[var(--radius-card)] border p-4 sm:flex-row sm:items-center sm:p-5"
+    class="mb-6 flex flex-col print:hidden items-start justify-between gap-4 rounded-[var(--radius-card)] border p-4 sm:flex-row sm:items-center sm:p-5"
     :class="notice.tone === 'warn' ? 'bg-warn-50 border-warn-200' : 'bg-brand-50 border-brand-200'"
     role="status"
   >
