@@ -167,9 +167,8 @@ export async function sendSms(phone: string, content: string): Promise<boolean> 
 // Por eso se quitan las tildes (la ñ sí es GSM) y se recorta el texto libre
 // (tour y cliente) antes que las instrucciones.
 const toGsm = (v: string) =>
-  v.replace(/ñ/g, "\u0001").replace(/Ñ/g, "\u0002")
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-    .replace(/\u0001/g, "ñ").replace(/\u0002/g, "Ñ")
+  v.normalize("NFC")
+    .replace(/[^ñÑ]/g, (c) => c.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
     .replace(/[^\x20-\x7EñÑ\n]/g, "")
 
 const clip = (v: string, n: number) => (v.length > n ? v.slice(0, Math.max(0, n)).trimEnd() : v)
