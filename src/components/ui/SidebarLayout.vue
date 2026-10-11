@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-dvh bg-gray-50 md:flex">
     <!-- Barra lateral de escritorio -->
-    <aside class="hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-dvh bg-side text-side-text">
+    <aside class="hidden print:!hidden md:flex md:flex-col md:w-64 md:shrink-0 md:sticky md:top-0 md:h-dvh bg-side text-side-text">
       <div class="px-5 pt-6 pb-7">
         <RouterLink :to="homePath" class="inline-flex rounded-md">
           <BrandLogo :size="26" variant="onDark" />
@@ -38,7 +38,7 @@
     </aside>
 
     <!-- Barra superior móvil -->
-    <header class="md:hidden sticky top-0 z-30 flex h-14 items-center justify-between bg-side px-4 text-side-text">
+    <header class="md:hidden print:!hidden sticky top-0 z-30 flex h-14 items-center justify-between bg-side px-4 text-side-text">
       <RouterLink :to="homePath" class="inline-flex rounded-md">
         <BrandLogo :size="22" variant="onDark" />
       </RouterLink>
@@ -109,7 +109,7 @@ import PlanBanner from "@/components/shared/PlanBanner.vue";
 import {
   PhList, PhX, PhSignOut, PhSquaresFour, PhMapTrifold, PhPlusCircle, PhCalendarBlank,
   PhBus, PhSteeringWheel, PhChartLineUp, PhReceipt, PhQrCode, PhGearSix, PhStack,
-  PhTicket, PhStorefront, PhCalendarCheck,
+  PhTicket, PhStorefront, PhCalendarCheck, PhFileText,
 } from "@phosphor-icons/vue";
 
 const router = useRouter();
@@ -152,6 +152,7 @@ const menuGroups = computed(() => {
           { label: "Ventas",       path: "/panel/mis-ventas", icon: PhChartLineUp },
           { label: "Comprobantes", path: "/panel/pagos",      icon: PhReceipt },
           { label: "Embarque",     path: "/panel/embarque",   icon: PhQrCode },
+          { label: "Estado de cuenta", path: "/panel/estado-de-cuenta", icon: PhFileText },
         ] },
         ACCOUNT,
       ];
@@ -180,6 +181,7 @@ const menuGroups = computed(() => {
           { label: "Eventos",     path: "/panel/negocio-eventos",  icon: PhCalendarBlank },
           { label: "Tickets",     path: "/panel/negocio-tickets",  icon: PhTicket },
           { label: "Escanear QR", path: "/panel/negocio-escanear", icon: PhQrCode },
+          { label: "Estado de cuenta", path: "/panel/estado-de-cuenta", icon: PhFileText },
         ] },
         ACCOUNT,
       ];
