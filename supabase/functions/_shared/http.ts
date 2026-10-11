@@ -67,6 +67,9 @@ export function mapDbError(message: string): { status: number; message: string }
   if (m.includes("OUTSIDE_HOURS"))      return { status: 409, message: "El vendedor no recibe reservas a esta hora. Revisa su horario de atención." }
   if (m.includes("AGENCY_DISABLED"))    return { status: 403, message: "Este tour no admite ventas por agencias." }
   if (m.includes("METHOD_DISABLED"))    return { status: 409, message: "El vendedor no acepta este método de pago." }
+  if (m.includes("PLAN_INACTIVE"))      return { status: 403, message: "Este vendedor no tiene un plan activo en chivaspass y no puede recibir reservas por ahora." }
+  if (m.includes("PLAN_UNITS"))         return { status: 403, message: "El plan del vendedor no cubre todas sus chivas. Debe ampliarlo para seguir vendiendo." }
+  if (m.includes("PLAN_LIMIT"))         return { status: 403, message: "Se alcanzó el límite de ventas del plan este mes." }
   if (m.includes("SEATS_REQUIRED"))     return { status: 400, message: "Selecciona al menos un asiento." }
   if (m.includes("QUANTITY_REQUIRED"))  return { status: 400, message: "Indica cuántas entradas quieres." }
   return { status: 500, message: "No se pudo registrar la reserva." }

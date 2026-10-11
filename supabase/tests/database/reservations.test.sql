@@ -1,7 +1,7 @@
 -- Pruebas pgTAP de la lógica crítica de ventas.
 -- Se ejecutan con `supabase test db` (local o CI) sobre las migraciones.
 BEGIN;
-SELECT plan(41);
+SELECT plan(52);
 
 -- ───────────── Datos de prueba ─────────────
 -- Usuarios en auth.users: el trigger handle_new_user crea public.users.
@@ -204,6 +204,64 @@ SELECT throws_ok($$ SELECT sale_id FROM public.seats LIMIT 1 $$, '42501', NULL,
 SELECT lives_ok($$ SELECT seat_number, status FROM public.seats LIMIT 1 $$,
   'Anon sí ve el mapa de asientos');
 RESET ROLE;
+
+-- ───────────── Bloqueo por plan ─────────────
+-- Dueño y negocio nuevos están en prueba; la agencia vende gratis hasta 30.
+SELECT is(public.seller_plan('00000000-0000-0000-0000-00000000aa05')->>'status', 'prueba',
+  'Un dueño nuevo arranca en prueba gratis');
+SELECT is(public.seller_plan('00000000-0000-0000-0000-00000000aa02')->>'monthly_limit', '30',
+  'Una agencia sin plan vende gratis hasta 30 tickets al mes');
+
+UPDATE public.tours SET active = true, allow_agency_sales = true WHERE id = '00000000-0000-0000-0000-00000000dd01';
+UPDATE public.users SET trial_ends_at = now() - interval '1 day' WHERE id = '00000000-0000-0000-0000-00000000aa05';
+SELECT throws_like(
+  $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[3],
+       '{"name":"Hugo","email":"hugo@test.local"}'::jsonb, NULL, 'pagado', 'efectivo', NULL) $$,
+  '%PLAN_INACTIVE%',
+  'Con la prueba vencida y sin plan, el dueño no vende ni en efectivo');
+SELECT is(public.seller_is_public('00000000-0000-0000-0000-00000000aa05'), false,
+  'Sin plan, sus tours dejan de verse en la página pública');
+
+SELECT lives_ok(
+  $$ SELECT public.activate_subscription('DUENO2@test.local', 'chiva', 'mensual', 1, 40, 'TRX-PLAN') $$,
+  'Administración activa el plan Chiva');
+SELECT is(public.seller_plan('00000000-0000-0000-0000-00000000aa05')->>'status', 'activo',
+  'Con el plan pagado el estado es activo');
+SELECT lives_ok(
+  $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[3],
+       '{"name":"Hugo","email":"hugo@test.local"}'::jsonb, NULL, 'pagado', 'efectivo', NULL) $$,
+  'Con plan activo vuelve a vender');
+
+INSERT INTO public.chivas (id, name, plate, code, capacity, user_id)
+VALUES ('00000000-0000-0000-0000-00000000cc02', 'Chiva Dos', 'XYZ-987', 'CH2', 4, '00000000-0000-0000-0000-00000000aa05');
+SELECT throws_like(
+  $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[4],
+       '{"name":"Ines","email":"ines@test.local"}'::jsonb, NULL, 'pagado', 'efectivo', NULL) $$,
+  '%PLAN_UNITS%',
+  'Si tiene más chivas de las que cubre el plan, no vende');
+DELETE FROM public.chivas WHERE id = '00000000-0000-0000-0000-00000000cc02';
+
+UPDATE public.app_settings SET value = '0' WHERE key = 'plan_promotor_free_limit';
+SELECT throws_like(
+  $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[4],
+       '{"name":"Juan","email":"juan@test.local"}'::jsonb, '00000000-0000-0000-0000-00000000aa02', 'pendiente', 'tarjeta', NULL) $$,
+  '%PLAN_LIMIT%',
+  'La agencia sin plan no pasa de su cupo gratis del mes');
+
+UPDATE public.users SET trial_ends_at = now() - interval '1 day' WHERE id = '00000000-0000-0000-0000-00000000aa04';
+SELECT throws_like(
+  $$ SELECT public.create_business_ticket('00000000-0000-0000-0000-00000000ef01', 1,
+       '{"name":"Ana","email":"ana@test.local","phone":"0999","cedula":"1"}'::jsonb, 'pendiente', 'TRX-11', 'comprobantes/z.jpg') $$,
+  '%PLAN_INACTIVE%',
+  'Un establecimiento sin plan no vende entradas');
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa04","role":"authenticated"}', true);
+SELECT throws_ok(
+  $$ UPDATE public.users SET trial_ends_at = now() + interval '1 year' WHERE id = '00000000-0000-0000-0000-00000000aa04' $$,
+  '42501', NULL, 'Nadie se extiende la prueba gratis a sí mismo');
+RESET ROLE;
+SELECT set_config('request.jwt.claims', NULL, true);
 
 SELECT * FROM finish();
 ROLLBACK;
