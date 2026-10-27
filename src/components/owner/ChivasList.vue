@@ -167,7 +167,9 @@ const saveChiva = async () => {
 
     if (error) {
       console.error("Error al actualizar chiva:", error);
-      alert("No se pudo actualizar la chiva.");
+      // P0001: error de negocio con mensaje legible (p. ej. capacidad menor a los asientos vendidos).
+      alert(error.code === "P0001" ? error.message : "No se pudo actualizar la chiva.");
+      return;
     }
   } else {
     const { error } = await supabase.from("chivas").insert([
@@ -204,7 +206,14 @@ const editChiva = (chiva) => {
 // Eliminar
 const deleteChiva = async (id) => {
   if (!confirm("¿Seguro que deseas eliminar esta chiva?")) return;
-  await supabase.from("chivas").delete().eq("id", id).eq("user_id", auth.user.id);
+  const { error } = await supabase.from("chivas").delete().eq("id", id).eq("user_id", auth.user.id);
+  if (error) {
+    console.error("Error al eliminar chiva:", error);
+    // 23503: la chiva tiene salidas registradas (llave foránea).
+    if (error.code === "23503") alert("No se puede eliminar: la chiva tiene salidas registradas.");
+    else alert(error.code === "P0001" ? error.message : "No se pudo eliminar la chiva.");
+    return;
+  }
   fetchChivas();
 };
 

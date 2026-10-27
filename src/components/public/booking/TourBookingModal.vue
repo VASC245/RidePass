@@ -82,6 +82,15 @@
               </div>
             </div>
 
+            <label class="flex items-start gap-3 text-sm text-gray-600 cursor-pointer">
+              <input v-model="form.accept" type="checkbox" class="mt-0.5 h-4 w-4 shrink-0 accent-orange-600" />
+              <span>
+                Acepto los <a href="/terminos" target="_blank" rel="noopener" class="font-semibold text-orange-700 underline">términos</a>
+                y la <a href="/privacidad" target="_blank" rel="noopener" class="font-semibold text-orange-700 underline">política de privacidad</a>,
+                y autorizo que mis datos se compartan con el vendedor para emitir y validar mi ticket.
+              </span>
+            </label>
+
             <div class="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1 mt-2">
               <div class="flex justify-between"><span>Tour</span><strong class="text-gray-900">{{ tour.title }}</strong></div>
               <div class="flex justify-between"><span>Asientos</span><strong class="text-gray-900">{{ selectedSeats.join(', ') }}</strong></div>
@@ -110,7 +119,11 @@
             </div>
             <p v-else-if="controls.hours_note" class="text-xs text-gray-500">{{ controls.hours_note }}</p>
 
-            <div v-if="!canTransfer && !controls.accept_cards" class="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center text-sm text-gray-600">
+            <p v-if="controls.accept_transfers && transferTooLate" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
+              Las transferencias cierran una hora antes de la salida porque el vendedor necesita tiempo para verificarlas. Para este horario compra directamente con el vendedor.
+            </p>
+
+            <div v-if="!controls.accept_transfers && !controls.accept_cards" class="bg-gray-50 border border-gray-200 rounded-2xl p-6 text-center text-sm text-gray-600">
               Este vendedor no tiene métodos de pago en línea activos por ahora. Contáctalo directamente.
             </div>
 
@@ -156,13 +169,15 @@
                   <PhPaperclip :size="22" class="text-gray-400 shrink-0" />
                   <div>
                     <p class="text-sm font-semibold text-gray-700">{{ proof.fileName || 'Seleccionar archivo' }}</p>
-                    <p class="text-xs text-gray-400">JPG, PNG o PDF · máx 5 MB</p>
+                    <p class="text-xs text-gray-400">JPG, PNG, WEBP o PDF · máx 5 MB</p>
                   </div>
-                  <input type="file" accept="image/*,application/pdf" class="hidden" @change="onFileChange" />
+                  <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="hidden" @change="onFileChange" />
                 </label>
                 <img v-if="proof.previewUrl && !proof.isPdf" :src="proof.previewUrl"
                   class="mt-3 w-28 h-28 object-cover rounded-xl border border-gray-200 shadow-sm mx-auto block" />
               </div>
+
+              <TurnstileWidget ref="captcha" v-model="captchaToken" />
 
               <p v-if="formError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ formError }}</p>
 
@@ -276,9 +291,10 @@ import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import QRCode from 'qrcode'
 import { supabase } from '@/lib/supabase'
 import { kushkiEnabled, tokenizeCard } from '@/lib/kushki'
-import { reserveTour, chargeCard, sellerPaymentInfo } from '@/lib/reservations'
+import { reserveTour, chargeCard, sellerPaymentInfo, uploadProof } from '@/lib/reservations'
 import { platformFee, money } from '@/lib/fees'
 import SeatGrid from '@/components/asientos/SeatGrid.vue'
+import TurnstileWidget from '@/components/ui/TurnstileWidget.vue'
 import {
   PhX, PhCheck, PhBank, PhCreditCard, PhPaperclip, PhCheckCircle, PhWhatsappLogo,
 } from '@phosphor-icons/vue'
@@ -296,7 +312,9 @@ const paymentMethod = ref('transfer')
 const stepLabels    = ['Elige asientos', 'Tus datos', 'Pago']
 const formError     = ref('')
 
-const form  = ref({ name: '', cedula: '', phone: '', email: '', address: '' })
+const form  = ref({ name: '', cedula: '', phone: '', email: '', address: '', accept: false })
+const captcha      = ref(null)
+const captchaToken = ref('')
 const proof = ref({ number: '', file: null, previewUrl: '', isPdf: false, fileName: '' })
 
 // pago con tarjeta (Kushki)
@@ -310,7 +328,12 @@ const bankInfo  = ref({ ...emptyBank })
 // Controles del vendedor (qué métodos acepta y si está en horario)
 const defaultControls = { accept_transfers: true, accept_cards: true, enforce_hours: false, hours_open_now: true, hours_open: '', hours_close: '', hours_note: '' }
 const controls = ref({ ...defaultControls })
-const canTransfer  = computed(() => controls.value.accept_transfers)
+// Mismo margen con que el servidor cierra las transferencias antes de la salida
+const TRANSFER_CUTOFF_MS = 60 * 60_000
+const transferTooLate = computed(() =>
+  props.tour ? new Date(props.tour.departure_at).getTime() - Date.now() < TRANSFER_CUTOFF_MS : false
+)
+const canTransfer  = computed(() => controls.value.accept_transfers && !transferTooLate.value)
 const canCard      = computed(() => kushkiEnabled && controls.value.accept_cards)
 const salesOpenNow = computed(() => controls.value.hours_open_now !== false)
 
@@ -323,7 +346,8 @@ watch(() => props.tour, (t) => {
     resultStatus.value  = ''
     paymentMethod.value = 'transfer'
     formError.value     = ''
-    form.value          = { name: '', cedula: '', phone: '', email: '', address: '' }
+    form.value          = { name: '', cedula: '', phone: '', email: '', address: '', accept: false }
+    captchaToken.value  = ''
     proof.value         = { number: '', file: null, previewUrl: '', isPdf: false, fileName: '' }
     card.value          = { name: '', number: '', expiry: '', cvv: '' }
     cardError.value     = ''
@@ -384,6 +408,10 @@ const validateFormAndNext = () => {
     formError.value = 'Por favor completa todos los campos.'
     return
   }
+  if (!form.value.accept) {
+    formError.value = 'Para continuar acepta los términos y la política de privacidad.'
+    return
+  }
   formError.value = ''
   step.value = 3
 }
@@ -424,16 +452,15 @@ const submitTransfer = async () => {
     formError.value = 'Completa el número de comprobante y sube el archivo.'
     return
   }
+  if (captcha.value?.enabled && !captchaToken.value) {
+    formError.value = 'Espera a que termine la verificación de seguridad e intenta de nuevo.'
+    return
+  }
   formError.value = ''
   uploading.value = true
   try {
-    // 1. subir archivo del comprobante
-    const safeName = proof.value.file.name.replace(/[^\w.-]+/g, '_').slice(-80)
-    const path = `comprobantes/public_${Date.now()}_${safeName}`
-    const { error: upErr } = await supabase.storage
-      .from('comprobantes')
-      .upload(path, proof.value.file, { contentType: proof.value.file.type })
-    if (upErr) throw new Error('No se pudo subir el comprobante. Intenta de nuevo.')
+    // 1. subir archivo del comprobante (URL firmada que entrega el servidor)
+    const path = await uploadProof(supabase, proof.value.file, captchaToken.value)
 
     // 2. registrar la reserva (valida asientos, crea venta pendiente, notifica)
     const data = await reserveTour(supabase, {
@@ -446,6 +473,7 @@ const submitTransfer = async () => {
     await showResult(data)
   } catch (err) {
     formError.value = err.message || 'Error al procesar la reserva. Intenta de nuevo.'
+    captcha.value?.reset()
   } finally {
     uploading.value = false
   }

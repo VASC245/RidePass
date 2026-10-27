@@ -66,38 +66,70 @@ npx supabase db push
 
 O pegar el contenido del archivo en el SQL Editor.
 
-## 3. Secrets de las funciones
+## 3. Secrets de las funciones (act. 26 oct 2026)
 
-```sh
-npx supabase secrets set \
-  RESEND_API_KEY=re_...            # clave NUEVA (la anterior quedó en el historial de git)
-  RESEND_FROM="ChivaPass <noreply@smartchiva.com>" \
-  ALLOWED_ORIGINS=https://TU-DOMINIO,http://localhost:5173 \
-  PUBLIC_APP_URL=https://TU-DOMINIO \
-  KUSHKI_PRIVATE_KEY=... KUSHKI_ENV=uat \
-  TWILIO_SID=... TWILIO_TOKEN=... TWILIO_WHATSAPP_FROM=whatsapp:+1...
-```
+Se cargan en Supabase → Edge Functions → Secrets, o con la CLI:
+
+| Secret | Para qué | Obligatorio |
+| --- | --- | --- |
+| `BREVO_API_KEY` | Correos de tickets, contacto y SMS al vendedor | Sí |
+| `BREVO_SENDER_EMAIL` | Remitente verificado en Brevo | Sí |
+| `BREVO_SENDER_NAME` | Nombre del remitente (por defecto `chivaspass`) | No |
+| `BREVO_SMS_SENDER` | Remitente de SMS, máx. 11 caracteres | No |
+| `CONTACT_EMAIL` | Buzón que recibe el formulario de contacto (por defecto el remitente) | No |
+| `PUBLIC_APP_URL` | URL del sitio para los enlaces de los tickets | Sí |
+| `ALLOWED_ORIGINS` | Orígenes del sitio separados por coma (CORS) | Sí |
+| `TURNSTILE_SECRET_KEY` | Captcha de Cloudflare en reservas y contacto | Recomendado |
+| `KUSHKI_PRIVATE_KEY`, `KUSHKI_ENV` | Pago con tarjeta (`uat` o `production`) | Para tarjeta |
+
+Si falta `BREVO_*` las ventas funcionan pero no sale ningún correo. Sin
+`PUBLIC_APP_URL` el enlace del ticket solo se arma si el origen de la
+petición está en la lista permitida. Sin `TURNSTILE_SECRET_KEY` no se pide
+captcha (el sitio tampoco lo muestra sin `VITE_TURNSTILE_SITE_KEY`).
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` y `SUPABASE_SERVICE_ROLE_KEY` los inyecta
 Supabase automáticamente.
 
+Variables públicas del sitio (en `.env.production`, van dentro del bundle):
+`VITE_TURNSTILE_SITE_KEY`, `VITE_PLANS_BANK_*`, `VITE_PLANS_WHATSAPP`,
+`VITE_LEGAL_OWNER`, `VITE_LEGAL_RUC`, `VITE_LEGAL_EMAIL`, `VITE_KUSHKI_PUBLIC_KEY`.
+
+### Captcha (Cloudflare Turnstile)
+
+1. Cloudflare → Turnstile → Add widget. Hostnames: `chivaspass.valentinsil13.workers.dev`
+   y `chivaspass.com`. Modo: Managed.
+2. La *site key* va en `.env.production` como `VITE_TURNSTILE_SITE_KEY`.
+3. La *secret key* va como secret `TURNSTILE_SECRET_KEY` en Supabase.
+4. `npm run deploy`.
+
+### Confirmación de correo en el registro
+
+Authentication → Sign In / Providers → Email → **Confirm email** activado.
+El servidor de correo por defecto de Supabase solo envía a miembros del
+equipo, así que hay que configurar SMTP propio con Brevo en
+Authentication → Emails → SMTP Settings (`smtp-relay.brevo.com`, puerto 587,
+usuario y clave SMTP de Brevo).
+
 ## 4. Desplegar funciones
 
 ```sh
-npx supabase functions deploy public-reserve
-npx supabase functions deploy kushki-charge
-npx supabase functions deploy send-ticket      # versión que responde 410
-npx supabase functions delete send-ticket      # y luego eliminarla
+npx supabase functions deploy public-reserve --use-api
+npx supabase functions deploy kushki-charge --use-api
+npx supabase functions deploy contact --use-api
+npx supabase functions delete send-ticket
 npx supabase functions delete send-whatsapp
 ```
 
-## 5. Código de invitación para dueños
+## 5. Códigos de invitación
 
-Las cuentas de dueño ya no se crean libremente. Insertar un código y
-entregarlo al dueño:
+Dueños, agencias y negocios se registran con un código de su rol (sin
+código válido la cuenta queda como cliente). En el SQL Editor:
 
 ```sql
-insert into public.owner_invite_codes (code) values ('CODIGO-UNICO-AQUI');
+select public.create_invite_code('dueño');    -- DUENO-XXXXXXXXXX
+select public.create_invite_code('agencia');  -- AGENCIA-XXXXXXXXXX
+select public.create_invite_code('negocio');  -- NEGOCIO-XXXXXXXXXX
+select code, role, used_by, used_at from public.owner_invite_codes order by used_at nulls first;
 ```
 
 ## 5b. Expiración de reservas (segunda migración)
@@ -109,6 +141,9 @@ insert into public.owner_invite_codes (code) values ('CODIGO-UNICO-AQUI');
 | Reserva sin comprobante (tarjeta interrumpida) | 15 minutos | `reservation_no_proof_minutes` |
 | Reserva con comprobante que nadie verificó | 24 horas | `reservation_unverified_hours` |
 | Comprobante sin verificar y la salida está cerca | 60 minutos antes | `reservation_release_before_departure_minutes` |
+
+Con ese mismo margen se dejan de aceptar transferencias nuevas (error
+`TRANSFER_CLOSED`); el efectivo del dueño se sigue vendiendo hasta la salida.
 
 Cambiar un plazo sin redeploy:
 
@@ -140,7 +175,8 @@ Ver las últimas ejecuciones: `select * from cron.job_run_details order by start
 | `insert` directo en `sales_simple`, `pending_payments`, `business_tickets` | edge function `public-reserve` |
 | `update seats` desde el navegador | RPC `board_sale` (embarque) y `verify_pending_payment` (comprobantes) |
 | Escáner confiaba en el JSON del QR | QR solo lleva `sale_id` / `ticket_id`; el servidor valida |
-| EmailJS desde el navegador | correo Resend desde el servidor tras registrar la venta |
+| EmailJS desde el navegador | correo Brevo desde el servidor tras registrar la venta |
 | `panel_settings` legible por anónimos | RPC `get_seller_payment_info(owner)` |
 | `business_tickets` verificados listables por anónimos | RPC `get_public_ticket(id)` sin cédula ni teléfono |
 | Bucket `comprobantes` público | privado; el vendedor lo abre con URL firmada |
+| Subida directa al bucket | URL firmada de `public-reserve` (`type: 'upload-url'`, con captcha para el público) |

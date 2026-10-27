@@ -17,6 +17,21 @@ const invoke = async (supabase, fn, body, fallback) => {
   return data;
 };
 
+// Sube el comprobante de una transferencia. El bucket no acepta subidas
+// directas: public-reserve entrega una URL firmada (con captcha para el
+// público) y el archivo se sube con ella. Devuelve la ruta para la reserva.
+export const uploadProof = async (supabase, file, turnstileToken = "") => {
+  const data = await invoke(supabase, "public-reserve", {
+    type: "upload-url",
+    payload: { fileName: file.name, contentType: file.type, turnstileToken },
+  }, "No se pudo subir el comprobante. Intenta de nuevo.");
+  const { error } = await supabase.storage
+    .from("comprobantes")
+    .uploadToSignedUrl(data.path, data.token, file, { contentType: file.type });
+  if (error) throw new Error("No se pudo subir el comprobante. Intenta de nuevo.");
+  return data.path;
+};
+
 // Reserva de tour sin tarjeta.
 //   { assignedChivaId, seats, customer, proofNumber?, proofPath?, paymentMethod? }
 export const reserveTour = (supabase, payload) =>

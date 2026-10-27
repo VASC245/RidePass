@@ -4,8 +4,13 @@
 // funciones SQL reserve_tour_seats / create_business_ticket (atómicas).
 //
 // Entrada:
+//   { type: 'upload-url', payload: { fileName, contentType, turnstileToken? } }
 //   { type: 'tour',     payload: { assignedChivaId, seats: number[], customer, proofNumber?, proofPath?, paymentMethod? } }
 //   { type: 'business', payload: { eventId, quantity, customer, proofNumber?, proofPath? } }
+//
+// El bucket 'comprobantes' ya no acepta subidas directas: el navegador pide
+// aquí una URL firmada (con captcha y límite por IP para el público) y sube
+// el archivo con ella. Así cada reserva por transferencia cuesta un captcha.
 //
 // Quién llama y qué pasa:
 //   - Invitado / cliente (anon o rol cliente): requiere comprobante → venta 'pendiente'.
@@ -16,10 +21,22 @@
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { appUrl, corsFor, jsonResponse, mapDbError, parseCustomer, parseSeats, rateLimited } from "../_shared/http.ts"
+import {
+  appUrl, corsFor, jsonResponse, mapDbError, parseCustomer, parseSeats, rateLimited, verifyTurnstile,
+} from "../_shared/http.ts"
 import { notifyAll, type TicketInfo } from "../_shared/notify.ts"
 
 type Caller = { id: string; role: string; fullName: string } | null
+
+const PANEL_ROLES = ["dueño", "agencia", "negocio", "conductor"]
+const PROOF_TYPES: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+  "application/pdf": "pdf",
+}
+// Un turista no necesita más asientos por reserva; las agencias y el dueño sí.
+const PUBLIC_MAX_SEATS = 20
 
 serve(async (req) => {
   const cors = corsFor(req)
@@ -36,13 +53,39 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     )
 
-    // ── Límite: 20 reservas por IP cada 10 minutos ──
-    if (await rateLimited(supabase, req, "reserve", 20, 600)) {
-      return json({ success: false, message: "Demasiadas reservas desde esta conexión. Espera unos minutos." }, 429)
-    }
-
     // ── Identificar quién llama (opcional) ──
     const caller = await resolveCaller(req, supabase)
+    const panelUser = Boolean(caller && PANEL_ROLES.includes(caller.role))
+
+    // ══════════════════ URL FIRMADA PARA EL COMPROBANTE ══════════════════
+    if (type === "upload-url") {
+      if (await rateLimited(supabase, req, "upload", panelUser ? 60 : 8, 600)) {
+        return json({ success: false, message: "Demasiados intentos desde esta conexión. Espera unos minutos." }, 429)
+      }
+      if (!panelUser && !(await verifyTurnstile(req, payload.turnstileToken))) {
+        return json({ success: false, message: "No pudimos verificar que no eres un robot. Recarga la página e intenta de nuevo." }, 403)
+      }
+      const ext = PROOF_TYPES[String(payload.contentType ?? "")]
+      if (!ext) return json({ success: false, message: "Sube una imagen (JPG, PNG, WEBP) o un PDF." }, 400)
+
+      const prefix = caller ? caller.id : "public"
+      const path = `comprobantes/${prefix}_${crypto.randomUUID()}.${ext}`
+      const { data: signed, error: signErr } = await supabase.storage
+        .from("comprobantes").createSignedUploadUrl(path)
+      if (signErr || !signed) {
+        console.error("createSignedUploadUrl:", signErr?.message)
+        return json({ success: false, message: "No se pudo preparar la subida. Intenta de nuevo." }, 500)
+      }
+      return json({ success: true, path, token: signed.token })
+    }
+
+    // ── Límite: 10 reservas por IP cada 10 minutos y 30 al día ──
+    if (
+      await rateLimited(supabase, req, "reserve", panelUser ? 60 : 10, 600) ||
+      (!panelUser && await rateLimited(supabase, req, "reserve-day", 30, 86400))
+    ) {
+      return json({ success: false, message: "Demasiadas reservas desde esta conexión. Espera unos minutos." }, 429)
+    }
 
     const proofNumber = String(payload.proofNumber ?? "").trim().slice(0, 60)
     const proofPath   = String(payload.proofPath ?? "").trim()
@@ -57,7 +100,7 @@ serve(async (req) => {
 
     // ══════════════════ TOUR EN CHIVA ══════════════════
     if (type === "tour") {
-      const seats    = parseSeats(payload.seats)
+      const seats    = parseSeats(payload.seats, panelUser ? 60 : PUBLIC_MAX_SEATS)
       const customer = parseCustomer(payload.customer)
       const assignedChivaId = String(payload.assignedChivaId ?? "")
       if (!assignedChivaId || !seats || !customer) {
@@ -152,7 +195,7 @@ serve(async (req) => {
       const qty      = Number(payload.quantity)
       const customer = parseCustomer(payload.customer)
       const eventId  = String(payload.eventId ?? "")
-      if (!eventId || !Number.isInteger(qty) || qty < 1 || qty > 50 || !customer) {
+      if (!eventId || !Number.isInteger(qty) || qty < 1 || qty > (panelUser ? 50 : PUBLIC_MAX_SEATS) || !customer) {
         return json({ success: false, message: "Datos de la reserva incompletos o inválidos." }, 400)
       }
       if (!hasProof) {
