@@ -23,4 +23,15 @@ watch(
   },
   { immediate: true },
 );
+
+// Sesión expirada o cerrada en otra pestaña: salir de las pantallas que
+// requieren cuenta en vez de quedarse con listas vacías.
+watch(
+  () => authStore.user,
+  (user, prev) => {
+    if (user || !prev || !authStore.ready) return;
+    const needsAuth = route.matched.some((r) => r.meta.requiresAuth || r.meta.roles);
+    if (needsAuth) router.replace(route.path.startsWith("/cuenta") ? "/cuenta/login" : "/panel/login");
+  },
+);
 </script>

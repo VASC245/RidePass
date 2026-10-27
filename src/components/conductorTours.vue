@@ -9,6 +9,10 @@
       </template>
     </PageHeader>
 
+    <p v-if="updateError" role="alert" class="mb-4 flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-4 py-3 text-sm text-bad-700">
+      <PhWarningCircle :size="18" class="mt-px shrink-0" /> {{ updateError }}
+    </p>
+
     <!-- Cargando -->
     <div v-if="loading && tours.length === 0" class="space-y-3" aria-busy="true" aria-label="Cargando salidas">
       <div v-for="n in 2" :key="n" class="h-36 animate-pulse rounded-[var(--radius-card)] border border-gray-200 bg-white" />
@@ -89,13 +93,14 @@
   import BaseButton from "@/components/ui/BaseButton.vue";
   import StatusBadge from "@/components/ui/StatusBadge.vue";
   import EmptyState from "@/components/ui/EmptyState.vue";
-  import { PhQrCode, PhCalendarBlank, PhBus, PhPlay, PhFlagCheckered } from "@phosphor-icons/vue";
+  import { PhQrCode, PhCalendarBlank, PhBus, PhPlay, PhFlagCheckered, PhWarningCircle } from "@phosphor-icons/vue";
 
   const auth = useAuthStore();
   const tours = ref([]);
   const loading = ref(true);
   const updatingId = ref(null);
   const confirmId = ref(null);
+  const updateError = ref("");
 
   const STATUS = {
     pendiente:  { tone: "info",    label: "Programada" },
@@ -204,6 +209,7 @@
   const updateStatus = async (id, newStatus) => {
     if (updatingId.value) return;
     updatingId.value = id;
+    updateError.value = "";
     // ANTES: solo status
     // AHORA: status + finished_at (solo al finalizar)
     const payload =
@@ -218,6 +224,10 @@
 
     if (error) {
       console.error("Error actualizando estado:", error);
+      const accion = newStatus === "finalizado" ? "finalizar" : "iniciar";
+      updateError.value = error.code === "P0001"
+        ? error.message
+        : `No se pudo ${accion} la salida. Revisa tu conexión e intenta de nuevo.`;
     }
 
     updatingId.value = null;

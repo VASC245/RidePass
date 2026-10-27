@@ -53,10 +53,10 @@
 
         <!-- Acciones -->
         <div v-if="tk.payment_status === 'pendiente'" class="flex gap-2 mt-4">
-          <button @click="setStatus(tk.id, 'verificado')" class="flex-1 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition">
+          <button @click="setStatus(tk.id, 'verificado')" :disabled="busyId === tk.id" class="flex-1 py-2 rounded-xl disabled:opacity-60 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold transition">
             Aprobar
           </button>
-          <button @click="setStatus(tk.id, 'rechazado')" class="flex-1 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition">
+          <button @click="setStatus(tk.id, 'rechazado')" :disabled="busyId === tk.id" class="flex-1 py-2 rounded-xl disabled:opacity-60 bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition">
             Rechazar
           </button>
         </div>
@@ -74,6 +74,7 @@ const authStore = useAuthStore()
 const loading = ref(true)
 const tickets = ref([])
 const activeFilter = ref('pendiente')
+const busyId = ref(null)
 
 const filters = [
   { label: 'Pendientes', value: 'pendiente' },
@@ -119,12 +120,19 @@ async function fetchTickets() {
 
 // review_business_ticket valida que el ticket sea de este negocio y, si se
 // rechaza, libera el cupo del evento.
+// Solo se procesan entradas 'pendiente'; si otra sesión ya la procesó, la
+// base responde INVALID_TRANSITION.
 const setStatus = async (id, status) => {
+  if (busyId.value) return
+  busyId.value = id
   const { error } = await supabase.rpc('review_business_ticket', { p_ticket_id: id, p_status: status })
   if (error) {
     console.error('review_business_ticket:', error.message)
-    alert('No se pudo actualizar el ticket.')
+    alert(error.message?.includes('INVALID_TRANSITION')
+      ? 'Esta entrada ya fue procesada.'
+      : 'No se pudo actualizar la entrada. Intenta de nuevo.')
   }
+  busyId.value = null
   await fetchTickets()
 }
 </script>

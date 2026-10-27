@@ -7,6 +7,19 @@
       <p class="text-gray-400 font-medium">Cargando ticket...</p>
     </div>
 
+    <!-- Error de red: distinto de "no encontrado" -->
+    <div v-else-if="loadFailed" role="alert" class="text-center max-w-sm">
+      <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-gray-200 flex items-center justify-center">
+        <PhWifiSlash :size="26" class="text-gray-500" />
+      </div>
+      <h2 class="text-xl font-bold text-gray-800">No pudimos cargar tu ticket</h2>
+      <p class="text-gray-500 mt-2 text-sm">Revisa tu conexión e intenta de nuevo.</p>
+      <button type="button" class="mt-6 inline-flex items-center justify-center rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-orange-700"
+        @click="loadTicket">
+        Reintentar
+      </button>
+    </div>
+
     <!-- No encontrado -->
     <div v-else-if="!ticket" class="text-center max-w-sm">
       <div class="w-14 h-14 mx-auto mb-4 rounded-full bg-gray-200 flex items-center justify-center">
@@ -103,7 +116,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
-import { PhTicket } from '@phosphor-icons/vue'
+import { PhTicket, PhWifiSlash } from '@phosphor-icons/vue'
 import { supabase } from '@/lib/supabase'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
 
@@ -111,6 +124,7 @@ const route   = useRoute()
 const loading = ref(true)
 const ticket  = ref(null)
 const qrUrl   = ref('')
+const loadFailed = ref(false)
 
 const isTour = computed(() => ticket.value?.kind === 'tour')
 
@@ -130,18 +144,30 @@ const dateLabel = computed(() => {
 
 // get_public_ticket devuelve solo los campos necesarios para mostrar el
 // ticket (sin cédula, teléfono ni comprobante) y únicamente si está pagado.
-onMounted(async () => {
+const loadTicket = async () => {
+  loading.value = true
+  loadFailed.value = false
   const id = String(route.params.id ?? '')
   if (/^[0-9a-f-]{36}$/i.test(id)) {
-    const { data, error } = await supabase.rpc('get_public_ticket', { p_id: id })
-    if (error) console.error('get_public_ticket:', error.message)
-    if (data) {
-      ticket.value = data
-      if (data.qr_payload) {
-        qrUrl.value = await QRCode.toDataURL(data.qr_payload, { width: 300, margin: 1 })
+    try {
+      const { data, error } = await supabase.rpc('get_public_ticket', { p_id: id })
+      if (error) {
+        // Un error de la consulta (red, servidor) no significa que el ticket no exista.
+        console.error('get_public_ticket:', error.message)
+        loadFailed.value = true
+      } else if (data) {
+        ticket.value = data
+        if (data.qr_payload) {
+          qrUrl.value = await QRCode.toDataURL(data.qr_payload, { width: 300, margin: 1 })
+        }
       }
+    } catch (err) {
+      console.error('get_public_ticket:', err)
+      loadFailed.value = true
     }
   }
   loading.value = false
-})
+}
+
+onMounted(loadTicket)
 </script>

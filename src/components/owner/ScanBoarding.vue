@@ -66,7 +66,7 @@ import {
 
 const videoRef = ref(null);
 const scanResult = ref("");
-const scanKind = ref("");   // ok | used | invalid | error
+const scanKind = ref("");   // ok | used | wrong | invalid | error
 const busy = ref(false);
 const cameraError = ref(false);
 const resultKey = ref(0);
@@ -145,7 +145,12 @@ const handleScan = async (qrText) => {
       await playBeep();
     } else if (data?.code === "ALREADY_BOARDED") {
       setResult("used", `${data.message} Asientos ${(data.seats ?? []).join(", ")}.`);
+    } else if (data?.code === "DEPARTURE_PAST" || data?.code === "WRONG_DEPARTURE") {
+      // Ticket pagado pero de otra salida: se muestra el mensaje del servidor con el titular.
+      const who = [data.customer, data.tour].filter(Boolean).join(" · ");
+      setResult("wrong", `${data.message ?? "Este ticket es de otra salida."}${who ? ` ${who}.` : ""}`);
     } else {
+      // Cualquier otro código (NOT_PAID, FORBIDDEN, NO_SEATS, nuevos…) trae su propio mensaje.
       setResult("invalid", data?.message || "Este código no corresponde a un boleto.");
     }
   } catch (err) {
@@ -181,6 +186,7 @@ onMounted(startScanner);
 const RESULT_STYLES = {
   ok:      { title: "Pasajero válido, puede subir", icon: PhCheckCircle,   box: "border-ok-600 bg-ok-50",     icon_color: "text-ok-600",   title_color: "text-ok-700" },
   used:    { title: "Boleto ya usado",              icon: PhWarningCircle, box: "border-warn-600 bg-warn-50", icon_color: "text-warn-600", title_color: "text-warn-700" },
+  wrong:   { title: "Boleto de otra salida",        icon: PhWarningCircle, box: "border-warn-600 bg-warn-50", icon_color: "text-warn-600", title_color: "text-warn-700" },
   invalid: { title: "QR no válido",                 icon: PhXCircle,       box: "border-bad-600 bg-bad-50",   icon_color: "text-bad-600",  title_color: "text-bad-700" },
   error:   { title: "No se pudo validar",           icon: PhWifiSlash,     box: "border-gray-400 bg-gray-100", icon_color: "text-gray-600", title_color: "text-gray-900" },
 };
@@ -207,7 +213,7 @@ const resultStyle = computed(() => RESULT_STYLES[scanKind.value] ?? RESULT_STYLE
 .viewfinder span:nth-child(4) { bottom: 0; right: 0; border-width: 0 4px 4px 0; border-bottom-right-radius: 12px; }
 .viewfinder--busy { transform: scale(0.96); }
 .viewfinder--ok { color: var(--color-ok-200); }
-.viewfinder--used { color: var(--color-warn-200); }
+.viewfinder--used, .viewfinder--wrong { color: var(--color-warn-200); }
 .viewfinder--invalid, .viewfinder--error { color: var(--color-bad-200); }
 
 .result {

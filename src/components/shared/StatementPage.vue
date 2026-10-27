@@ -199,6 +199,13 @@
           </table>
         </div>
       </BaseCard>
+
+      <BaseCard v-if="historyError" variant="danger" class="print:hidden">
+        <p class="text-sm text-bad-700">
+          {{ historyError }}
+          <button type="button" class="font-semibold underline underline-offset-2" @click="loadHistory">Reintentar</button>
+        </p>
+      </BaseCard>
     </div>
   </div>
 </template>
@@ -242,6 +249,7 @@ const period = ref(currentPeriod())
 const st = ref(null)
 const history = ref([])
 const error = ref('')
+const historyError = ref('')
 
 const monthOptions = computed(() => {
   const set = new Set([currentPeriod(), ...history.value.map((h) => h.period)])
@@ -301,7 +309,13 @@ const loadStatement = async () => {
 }
 
 const loadHistory = async () => {
-  const { data } = await supabase.rpc('my_statement_history')
+  historyError.value = ''
+  const { data, error: e } = await supabase.rpc('my_statement_history')
+  if (e) {
+    console.error('my_statement_history:', e.message)
+    historyError.value = 'No se pudo cargar el historial de meses anteriores.'
+    return
+  }
   history.value = data ?? []
 }
 

@@ -7,6 +7,11 @@
       <div v-for="n in 3" :key="n" class="h-24 animate-pulse rounded-[var(--radius-card)] bg-gray-100" />
     </div>
 
+    <p v-else-if="loadError" role="alert" class="flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-4 py-3 text-sm text-bad-700">
+      <PhWarningCircle :size="18" class="mt-px shrink-0" />
+      <span>{{ loadError }} <button type="button" class="font-semibold underline underline-offset-2" @click="fetchTours">Reintentar</button></span>
+    </p>
+
     <BaseCard v-else-if="assignedTours.length === 0">
       <EmptyState :icon="PhCalendarBlank" title="No hay salidas programadas"
         description="Cuando un dueño programe una salida y permita la venta por agencias, aparecerá aquí." />
@@ -96,7 +101,7 @@ import BaseCard from "@/components/ui/BaseCard.vue";
 import BaseButton from "@/components/ui/BaseButton.vue";
 import StatusBadge from "@/components/ui/StatusBadge.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
-import { PhBus, PhArmchair, PhTicket, PhX, PhCalendarBlank } from "@phosphor-icons/vue";
+import { PhBus, PhArmchair, PhTicket, PhX, PhCalendarBlank, PhWarningCircle } from "@phosphor-icons/vue";
 
 const auth = useAuthStore();
 
@@ -104,6 +109,10 @@ const assignedTours = ref([]);
 const showSeatsModal = ref(false);
 const selectedTourId = ref(null);
 const loading = ref(true);
+const loadError = ref("");
+
+// Mismo tope que la página pública: solo próximas salidas, no todo el historial.
+const LIST_LIMIT = 200;
 
 const selectedTour = computed(() => assignedTours.value.find((t) => t.id === selectedTourId.value));
 
@@ -120,27 +129,41 @@ const closeSeatModal = () => {
 };
 onBeforeUnmount(() => window.removeEventListener("keydown", onKey));
 
-// Cargar salidas programadas
+// Cargar salidas programadas: próximas, con ventas abiertas y de tours
+// activos que permiten la venta por agencias (mismos filtros que toursStore).
 const fetchTours = async () => {
+  loading.value = true;
+  loadError.value = "";
   try {
     let query = supabase
       .from("assigned_chivas")
       .select(`
         id,
         departure_at,
-        tours (
+        status,
+        sales_open,
+        tours!inner (
           id,
           title,
           duration,
           base_price,
-          user_id
+          user_id,
+          active,
+          allow_agency_sales
         ),
         chivas (
           id,
           name,
           user_id
         )
-      `);
+      `)
+      .in("status", ["pendiente", "en_curso"])
+      .eq("sales_open", true)
+      .eq("tours.active", true)
+      .eq("tours.allow_agency_sales", true)
+      .gte("departure_at", new Date(Date.now() - 30 * 60_000).toISOString())
+      .order("departure_at", { ascending: true })
+      .limit(LIST_LIMIT);
 
     // Si es dueño, solo sus tours
     if (auth.user && auth.user.role === "dueño") {
@@ -158,6 +181,7 @@ const fetchTours = async () => {
   } catch (err) {
     console.error("Error al cargar tours asignados:", err);
     assignedTours.value = [];
+    loadError.value = "No pudimos cargar las salidas. Revisa tu conexión e intenta de nuevo.";
   } finally {
     loading.value = false;
   }

@@ -57,6 +57,7 @@
 import { ref } from "vue";
 import { PhX, PhUploadSimple, PhWarningCircle } from "@phosphor-icons/vue";
 import { supabase } from "@/lib/supabase";
+import { uploadProof as uploadProofFile } from "@/lib/reservations";
 import BaseButton from "@/components/ui/BaseButton.vue";
 
 // Este modal SOLO sube el archivo al bucket. El registro del comprobante lo
@@ -105,21 +106,16 @@ const uploadProof = async () => {
   uploading.value = true;
   error.value = "";
 
-  const { data: { user } } = await supabase.auth.getUser();
-  const prefix = user?.id ?? "public";
-  const safeName = selectedFile.value.name.replace(/[^\w.-]+/g, "_").slice(-80);
-  const storagePath = `comprobantes/${prefix}_${Date.now()}_${safeName}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("comprobantes")
-    .upload(storagePath, selectedFile.value, { contentType: selectedFile.value.type });
-
-  uploading.value = false;
-
-  if (uploadError) {
-    console.error("upload comprobante:", uploadError);
-    error.value = "No se pudo subir el archivo. Intenta de nuevo.";
+  // URL firmada desde public-reserve (los paneles no necesitan captcha)
+  let storagePath;
+  try {
+    storagePath = await uploadProofFile(supabase, selectedFile.value);
+  } catch (e) {
+    console.error("upload comprobante:", e.message);
+    error.value = e.message || "No se pudo subir el archivo. Intenta de nuevo.";
     return;
+  } finally {
+    uploading.value = false;
   }
 
   emit("uploaded", { path: storagePath, number: numeroComprobante.value });
