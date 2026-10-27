@@ -1,25 +1,30 @@
 -- Pruebas pgTAP de la lógica crítica de ventas.
 -- Se ejecutan con `supabase test db` (local o CI) sobre las migraciones.
 BEGIN;
-SELECT plan(60);
+SELECT plan(71);
 
 -- ───────────── Datos de prueba ─────────────
 -- Usuarios en auth.users: el trigger handle_new_user crea public.users.
+-- Agencia y negocio entran con código de invitación de su rol.
+INSERT INTO public.owner_invite_codes (code, role) VALUES ('TEST-AG', 'agencia'), ('TEST-NEG', 'negocio');
 INSERT INTO auth.users (id, email, raw_user_meta_data, instance_id, aud, role, encrypted_password, created_at, updated_at)
 VALUES
   ('00000000-0000-0000-0000-00000000aa01', 'dueno@test.local',   '{"full_name":"Dueño Test","role":"dueño","owner_code":"TEST-CODE"}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now()),
-  ('00000000-0000-0000-0000-00000000aa02', 'agencia@test.local', '{"full_name":"Agencia Test","role":"agencia"}',                          '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now()),
+  ('00000000-0000-0000-0000-00000000aa02', 'agencia@test.local', '{"full_name":"Agencia Test","role":"agencia","invite_code":"TEST-AG"}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now()),
   ('00000000-0000-0000-0000-00000000aa03', 'pirata@test.local',  '{"full_name":"Pirata","role":"dueño"}',                                 '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now()),
-  ('00000000-0000-0000-0000-00000000aa04', 'negocio@test.local', '{"full_name":"Negocio Test","role":"negocio"}',                          '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now());
+  ('00000000-0000-0000-0000-00000000aa04', 'negocio@test.local', '{"full_name":"Negocio Test","role":"negocio","invite_code":"TEST-NEG"}','00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now());
 
--- El primero no tenía código válido en la tabla todavía → cae a agencia. Lo
+-- El primero no tenía código válido en la tabla todavía → cae a cliente. Lo
 -- corregimos insertando el código y volviendo a evaluar con un usuario nuevo.
 INSERT INTO public.owner_invite_codes (code) VALUES ('TEST-CODE');
 INSERT INTO auth.users (id, email, raw_user_meta_data, instance_id, aud, role, encrypted_password, created_at, updated_at)
 VALUES ('00000000-0000-0000-0000-00000000aa05', 'dueno2@test.local', '{"full_name":"Dueño Real","role":"dueño","owner_code":"TEST-CODE"}', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', 'x', now(), now());
 
-SELECT is((SELECT role FROM public.users WHERE id = '00000000-0000-0000-0000-00000000aa03'), 'agencia',
-  'Registrarse como dueño sin código válido cae a agencia');
+SELECT is((SELECT role FROM public.users WHERE id = '00000000-0000-0000-0000-00000000aa03'), 'cliente',
+  'Registrarse como dueño sin código válido cae a cliente');
+SELECT is((SELECT role || '|' || (SELECT count(*) FROM public.owner_invite_codes WHERE code = 'TEST-AG' AND used_by IS NOT NULL)
+             FROM public.users WHERE id = '00000000-0000-0000-0000-00000000aa02'), 'agencia|1',
+  'La agencia se registra con su código y lo consume');
 SELECT is((SELECT role FROM public.users WHERE id = '00000000-0000-0000-0000-00000000aa05'), 'dueño',
   'Registrarse como dueño con código válido funciona');
 SELECT is((SELECT used_by FROM public.owner_invite_codes WHERE code = 'TEST-CODE'), '00000000-0000-0000-0000-00000000aa05'::uuid,
@@ -153,7 +158,7 @@ VALUES ('00000000-0000-0000-0000-00000000bb02', '00000000-0000-0000-0000-0000000
 
 SET LOCAL ROLE authenticated;
 
--- aa03 es agencia: intenta usar el tour y la chiva del dueño aa05
+-- aa03 es cliente: intenta usar el tour y la chiva del dueño aa05
 SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa03","role":"authenticated"}', true);
 SELECT throws_ok(
   $$ INSERT INTO public.assigned_chivas (tour_id, chiva_id, departure_at, owner_id)
@@ -297,6 +302,67 @@ SELECT is((SELECT count(*) FROM public.fee_payments), 0::bigint,
 SELECT throws_ok(
   $$ INSERT INTO public.fee_payments (owner_id, period, amount) VALUES ('00000000-0000-0000-0000-00000000aa04', public.current_period(), 1) $$,
   '42501', NULL, 'Nadie se registra pagos a sí mismo');
+RESET ROLE;
+SELECT set_config('request.jwt.claims', NULL, true);
+
+-- ───────────── Arreglos de producción (migración criticos_produccion) ─────────────
+-- Transferencias cerradas dentro del margen en que el cron las libera.
+INSERT INTO public.assigned_chivas (id, tour_id, chiva_id, departure_at, owner_id)
+VALUES ('00000000-0000-0000-0000-00000000ee02', '00000000-0000-0000-0000-00000000dd01', '00000000-0000-0000-0000-00000000cc01', now() + interval '30 minutes', '00000000-0000-0000-0000-00000000aa05');
+SELECT throws_like(
+  $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee02', ARRAY[1],
+       '{"name":"Lia","email":"lia@test.local"}'::jsonb, NULL, 'pendiente', 'transferencia', 'TRX-L') $$,
+  '%TRANSFER_CLOSED%',
+  'No se acepta una transferencia que el cron liberaría antes de la salida');
+SELECT lives_ok(
+  $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee02', ARRAY[1],
+       '{"name":"Lia","email":"lia@test.local"}'::jsonb, NULL, 'pagado', 'efectivo', NULL) $$,
+  'El efectivo del dueño sí se vende a última hora');
+
+-- El cron sigue liberando reservas vencidas
+DO $$ BEGIN
+  PERFORM public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[2],
+    '{"name":"Lola","email":"lola@test.local"}'::jsonb, NULL, 'pendiente', 'transferencia', 'TRX-LOLA');
+  UPDATE public.sales_simple SET created_at = now() - interval '1 hour' WHERE customer_email = 'lola@test.local';
+  PERFORM public.expire_pending_reservations();
+END $$;
+SELECT is((SELECT status FROM public.sales_simple WHERE customer_email = 'lola@test.local')
+          || '|' || (SELECT status FROM public.seats WHERE assigned_chiva_id = '00000000-0000-0000-0000-00000000ee01' AND seat_number = 2),
+  'cancelado|disponible',
+  'El cron cancela la reserva sin comprobante y libera el asiento');
+
+-- Entradas de negocio: solo desde pendiente
+SELECT lives_ok(
+  $$ SELECT public.set_business_ticket_status((SELECT id FROM public.business_tickets WHERE customer_email = 'ana@test.local'), 'verificado') $$,
+  'Una entrada pendiente se verifica');
+SELECT throws_like(
+  $$ SELECT public.set_business_ticket_status((SELECT id FROM public.business_tickets WHERE customer_email = 'ana@test.local'), 'rechazado') $$,
+  '%INVALID_TRANSITION%',
+  'Una entrada ya verificada no se puede rechazar después');
+
+-- Capacidad de la chiva y cambios de salida con ventas
+UPDATE public.chivas SET capacity = 6 WHERE id = '00000000-0000-0000-0000-00000000cc01';
+SELECT is((SELECT count(*) FROM public.seats WHERE assigned_chiva_id = '00000000-0000-0000-0000-00000000ee01'), 6::bigint,
+  'Subir la capacidad agrega asientos a las salidas próximas');
+SELECT throws_like(
+  $$ UPDATE public.chivas SET capacity = 2 WHERE id = '00000000-0000-0000-0000-00000000cc01' $$,
+  '%No puedes bajar la capacidad%',
+  'No se baja la capacidad por debajo de asientos ya vendidos');
+SELECT throws_like(
+  $$ UPDATE public.assigned_chivas SET departure_at = departure_at + interval '1 hour' WHERE id = '00000000-0000-0000-0000-00000000ee01' $$,
+  '%ya tiene ventas%',
+  'Una salida con ventas no cambia de hora');
+
+-- Correo del perfil y embarque fuera de horario
+SELECT set_config('test.eva_qr', (SELECT qr_payload FROM public.sales_simple WHERE customer_email = 'eva@test.local'), true);
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa04","role":"authenticated"}', true);
+SELECT throws_ok(
+  $$ UPDATE public.users SET email = 'dueno2@test.local' WHERE id = '00000000-0000-0000-0000-00000000aa04' $$,
+  '42501', NULL, 'Nadie se cambia el correo del perfil desde la API');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa05","role":"authenticated"}', true);
+SELECT is(public.board_sale(current_setting('test.eva_qr'))->>'code', 'WRONG_DEPARTURE',
+  'Un QR de una salida de otro día no sirve para embarcar hoy');
 RESET ROLE;
 SELECT set_config('request.jwt.claims', NULL, true);
 
