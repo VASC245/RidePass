@@ -13,7 +13,15 @@
           <input v-model="email" type="email" required placeholder="tu@correo.com" class="field-input" />
         </div>
         <div>
-          <label class="field-label">Contraseña</label>
+          <div class="flex items-baseline justify-between">
+            <label class="field-label">Contraseña</label>
+            <RouterLink
+              :to="{ path: '/recuperar-contrasena', query: email ? { correo: email } : {} }"
+              class="text-xs font-semibold text-orange-600 hover:underline"
+            >
+              ¿La olvidaste?
+            </RouterLink>
+          </div>
           <input v-model="password" type="password" required placeholder="••••••••" class="field-input" />
         </div>
 

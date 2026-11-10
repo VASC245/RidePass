@@ -43,6 +43,8 @@ const routes = [
   // ═══════════════════════════════════════
   { path: "/panel/login",    name: "Login",    component: lazy(() => import("@/components/auth/Login.vue")),    meta: { public: true } },
   { path: "/panel/register", name: "Register", component: lazy(() => import("@/components/auth/Register.vue")), meta: { public: true } },
+  { path: "/recuperar-contrasena", name: "ForgotPassword", component: lazy(() => import("@/components/auth/ForgotPassword.vue")), meta: { public: true } },
+  { path: "/nueva-contrasena",     name: "ResetPassword",  component: lazy(() => import("@/components/auth/ResetPassword.vue")),  meta: { public: true } },
 
   // ═══════════════════════════════════════
   // PORTAL CLIENTE

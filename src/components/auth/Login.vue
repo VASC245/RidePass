@@ -26,9 +26,17 @@
         </div>
 
         <div>
-          <label class="block text-sm font-semibold text-gray-700 mb-2">
-            Contraseña
-          </label>
+          <div class="flex items-baseline justify-between mb-2">
+            <label class="block text-sm font-semibold text-gray-700">
+              Contraseña
+            </label>
+            <RouterLink
+              :to="{ path: '/recuperar-contrasena', query: { desde: 'panel', ...(email ? { correo: email } : {}) } }"
+              class="text-sm font-medium text-blue-600 hover:underline"
+            >
+              ¿La olvidaste?
+            </RouterLink>
+          </div>
           <input
             v-model="password"
             type="password"
