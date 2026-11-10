@@ -135,12 +135,19 @@
                 <div class="font-bold text-sm">Transferencia</div>
                 <div class="text-xs text-gray-400 mt-0.5">Depósito bancario</div>
               </button>
-              <button v-if="controls.accept_cards" @click="paymentMethod = 'card'"
+              <button v-if="controls.accept_cards && (kushkiEnabled || !canPayphone)" @click="paymentMethod = 'card'"
                 :class="paymentMethod === 'card' ? 'border-2 border-orange-600 bg-orange-50 text-orange-800' : 'border border-gray-200 text-gray-600 hover:border-gray-300'"
                 class="rounded-2xl p-4 text-center transition-all">
                 <PhCreditCard :size="24" class="mx-auto mb-1.5" />
                 <div class="font-bold text-sm">Tarjeta</div>
                 <div class="text-xs text-gray-400 mt-0.5">{{ kushkiEnabled ? 'Débito o crédito' : 'Próximamente' }}</div>
+              </button>
+              <button v-if="canPayphone" @click="paymentMethod = 'payphone'"
+                :class="paymentMethod === 'payphone' ? 'border-2 border-orange-600 bg-orange-50 text-orange-800' : 'border border-gray-200 text-gray-600 hover:border-gray-300'"
+                class="rounded-2xl p-4 text-center transition-all">
+                <PhCreditCard :size="24" class="mx-auto mb-1.5" />
+                <div class="font-bold text-sm">Tarjeta</div>
+                <div class="text-xs text-gray-400 mt-0.5">Débito o crédito · PayPhone</div>
               </button>
             </div>
 
@@ -188,6 +195,9 @@
                 </button>
               </div>
             </div>
+
+            <PayphoneCheckout v-if="paymentMethod === 'payphone' && canPayphone"
+              type="tour" :payload="payphonePayload" :total="total" :disabled="!salesOpenNow" @back="step = 2" />
 
             <div v-if="paymentMethod === 'card' && controls.accept_cards">
               <div v-if="!kushkiEnabled">
@@ -291,7 +301,8 @@ import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import QRCode from 'qrcode'
 import { supabase } from '@/lib/supabase'
 import { kushkiEnabled, tokenizeCard } from '@/lib/kushki'
-import { reserveTour, chargeCard, sellerPaymentInfo, uploadProof } from '@/lib/reservations'
+import PayphoneCheckout from './PayphoneCheckout.vue'
+import { reserveTour, chargeCard, sellerPaymentInfo, uploadProof, payphoneEnabled } from '@/lib/reservations'
 import { platformFee, money } from '@/lib/fees'
 import SeatGrid from '@/components/asientos/SeatGrid.vue'
 import TurnstileWidget from '@/components/ui/TurnstileWidget.vue'
@@ -335,6 +346,7 @@ const transferTooLate = computed(() =>
 )
 const canTransfer  = computed(() => controls.value.accept_transfers && !transferTooLate.value)
 const canCard      = computed(() => kushkiEnabled && controls.value.accept_cards)
+const canPayphone  = computed(() => payphoneEnabled && controls.value.accept_payphone === true)
 const salesOpenNow = computed(() => controls.value.hours_open_now !== false)
 
 watch(() => props.tour, (t) => {
@@ -374,7 +386,8 @@ const loadSellerSettings = async (ownerId) => {
     : { ...emptyBank }
   controls.value = { ...defaultControls, ...(data ?? {}) }
   // Si el vendedor apagó las transferencias, arrancar en tarjeta
-  if (!canTransfer.value && canCard.value) paymentMethod.value = 'card'
+  if (!canTransfer.value && canPayphone.value) paymentMethod.value = 'payphone'
+  else if (!canTransfer.value && canCard.value) paymentMethod.value = 'card'
 }
 
 const subtotal = computed(() =>
@@ -491,6 +504,13 @@ const formatExpiry = () => {
   if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2)
   card.value.expiry = v
 }
+
+// Pago con PayPhone: mismos datos que la tarjeta; el monto lo pone el servidor.
+const payphonePayload = () => ({
+  assignedChivaId: props.tour.id,
+  seats: selectedSeats.value.map(Number),
+  customer: { ...form.value },
+})
 
 const payWithCard = async () => {
   cardError.value = ''

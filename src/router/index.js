@@ -34,6 +34,8 @@ const routes = [
       { path: "terminos",      name: "Terminos",     component: lazy(() => import("@/components/public/legal/TermsPage.vue")) },
       { path: "privacidad",    name: "Privacidad",   component: lazy(() => import("@/components/public/legal/PrivacyPage.vue")) },
       { path: "creditos",      name: "Creditos",     component: lazy(() => import("@/components/public/legal/CreditsPage.vue")) },
+      // Retorno de PayPhone: confirma el cobro y muestra el ticket (recargable).
+      { path: "pago/resultado", name: "PaymentResult", component: lazy(() => import("@/components/public/PaymentResult.vue")) },
       { path: ":pathMatch(.*)*", name: "NotFound",   component: lazy(() => import("@/components/public/NotFoundPage.vue")) },
     ],
   },

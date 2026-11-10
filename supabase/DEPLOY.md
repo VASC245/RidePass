@@ -180,3 +180,50 @@ Ver las últimas ejecuciones: `select * from cron.job_run_details order by start
 | `business_tickets` verificados listables por anónimos | RPC `get_public_ticket(id)` sin cédula ni teléfono |
 | Bucket `comprobantes` público | privado; el vendedor lo abre con URL firmada |
 | Subida directa al bucket | URL firmada de `public-reserve` (`type: 'upload-url'`, con captcha para el público) |
+
+---
+
+# PayPhone con Split de Pagos (nov 2026)
+
+Proveedor adicional a Kushki. ChivasPass es la única tienda PayPhone que
+cobra; en cada venta se envía `transferTo` con el precio del vendedor y el
+resto (cargo por servicio − comisión PayPhone) queda en el saldo de
+ChivasPass. Fase 1: ventas públicas sin agencia, un solo receptor.
+
+## Orden para activarlo
+
+1. **Migración** `20261110000001_payphone_split.sql` (pruebas en
+   `supabase/tests/database/payphone.test.sql`).
+2. **Secrets** (nunca en el frontend ni en el repo):
+   ```
+   npx supabase secrets set --project-ref cyyzudhjpifpbpeiebsn \
+     PAYPHONE_TOKEN=... PAYPHONE_STORE_ID=... PAYPHONE_ENCRYPTION_KEY=...
+   ```
+   `PAYPHONE_ENCRYPTION_KEY` debe medir exactamente 32 caracteres; si no,
+   la función se niega a cifrar. Opcional: `PAYPHONE_SPLIT_AMOUNT_AS=number`
+   si PayPhone pide `Amount` numérico en vez de texto.
+3. **Funciones**: `npx supabase functions deploy payphone-prepare payphone-confirm --use-api`.
+4. **PayPhone Developers**: registrar el dominio (workers.dev hoy,
+   chivaspass.com después). El botón solo funciona en ese dominio.
+5. **Frontend**: `VITE_PAYPHONE_ENABLED=true` en `.env.production` y `npm run deploy`.
+6. Cada vendedor registra su cuenta PayPhone en Configuración → Cobros con
+   tarjeta. Sin cuenta, su checkout no muestra PayPhone.
+
+## Flujo
+
+`payphone-prepare` crea la sesión `pending` (clientTransactionId en
+`provider_token`), reserva en `pendiente`, calcula el split en centavos
+(`_shared/payphone.ts`) y llama a `/api/button/Prepare`. El comprador paga
+en PayPhone y vuelve a `/pago/resultado?id=…&clientTransactionId=…`, que
+llama a `payphone-confirm` → `/api/button/V2/Confirm`. Si no se confirma en
+5 minutos, PayPhone revierte el cobro solo. El cron espera 20 minutos
+(`payphone_confirm_grace_minutes`) antes de liberar una reserva con tarjeta.
+
+## Administración por SQL
+
+```sql
+SELECT * FROM public.payphone_sessions_overview();                                  -- 30 días
+SELECT * FROM public.payphone_sessions_overview(now() - interval '7 days', 'needs_review');
+```
+`needs_review` = PayPhone cobró pero la venta no se pudo confirmar: buscar
+la referencia en PayPhone Business y emitir el ticket o devolver el dinero.
