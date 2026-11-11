@@ -137,6 +137,7 @@ import BaseButton from '@/components/ui/BaseButton.vue'
 import StatusBadge from '@/components/ui/StatusBadge.vue'
 import { usePlan } from '@/composables/usePlan'
 import { PLANS, PLANS_BY_ROLE, UNIT_LABEL, formatDate } from '@/lib/plans'
+import { PLATFORM_BANK, hasPlatformBank, platformBankRows } from '@/lib/billing'
 
 const auth = useAuthStore()
 const { plan, loading, load, trialDaysLeft, usagePct } = usePlan()
@@ -207,16 +208,8 @@ const status = computed(() => {
   }
 })
 
-// Datos de cobro de chivaspass (no son los del vendedor)
-const bank = {
-  name:     import.meta.env.VITE_PLANS_BANK_NAME    || '',
-  account:  import.meta.env.VITE_PLANS_BANK_ACCOUNT || '',
-  type:     import.meta.env.VITE_PLANS_BANK_TYPE    || '',
-  owner:    import.meta.env.VITE_PLANS_BANK_OWNER   || '',
-  ruc:      import.meta.env.VITE_PLANS_BANK_RUC     || '',
-  whatsapp: import.meta.env.VITE_PLANS_WHATSAPP     || '',
-}
-const hasBank = !!(bank.name && bank.account && bank.owner)
+const bank = PLATFORM_BANK
+const hasBank = hasPlatformBank
 
 const pending = ref(null)
 const payCard = ref(null)
@@ -232,10 +225,7 @@ const payRows = computed(() => {
   if (!pending.value) return []
   const { plan: p, billing } = pending.value
   return [
-    hasBank && { label: 'Banco',    value: bank.name },
-    hasBank && { label: 'Cuenta',   value: [bank.type, bank.account].filter(Boolean).join(' ') },
-    hasBank && { label: 'Titular',  value: bank.owner },
-    hasBank && bank.ruc && { label: 'RUC', value: bank.ruc },
+    ...platformBankRows(),
     { label: 'Plan',     value: p.perUnit ? `${p.name} × ${units.value}` : p.name },
     { label: 'Periodo',  value: billing === 'anual' ? '1 año' : '1 mes' },
     { label: 'Monto',    value: `$${amount.value.toFixed(2)}` },

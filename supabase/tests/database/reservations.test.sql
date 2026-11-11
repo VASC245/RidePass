@@ -1,7 +1,7 @@
 -- Pruebas pgTAP de la lógica crítica de ventas.
 -- Se ejecutan con `supabase test db` (local o CI) sobre las migraciones.
 BEGIN;
-SELECT plan(52);
+SELECT plan(60);
 
 -- ───────────── Datos de prueba ─────────────
 -- Usuarios en auth.users: el trigger handle_new_user crea public.users.
@@ -260,6 +260,43 @@ SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 SELECT throws_ok(
   $$ UPDATE public.users SET trial_ends_at = now() + interval '1 year' WHERE id = '00000000-0000-0000-0000-00000000aa04' $$,
   '42501', NULL, 'Nadie se extiende la prueba gratis a sí mismo');
+RESET ROLE;
+SELECT set_config('request.jwt.claims', NULL, true);
+
+-- ───────────── Estado de cuenta ─────────────
+-- Venta por transferencia confirmada: el cargo (8 % de $5 + $0,30 = $0,70)
+-- quedó en la cuenta del dueño y se le cobra en el estado de cuenta.
+UPDATE public.panel_settings SET accept_transfers = true WHERE user_id = '00000000-0000-0000-0000-00000000aa05';
+DO $$ BEGIN
+  PERFORM public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[4],
+    '{"name":"Karla","email":"karla@test.local"}'::jsonb, NULL, 'pendiente', 'transferencia', 'TRX-K');
+  PERFORM public.confirm_sale((SELECT id FROM public.sales_simple WHERE customer_email = 'karla@test.local'), 'TRX-K');
+END $$;
+
+SELECT is((public.seller_statement('00000000-0000-0000-0000-00000000aa05')->>'fees_owed')::numeric, 0.70::numeric,
+  'El estado de cuenta cobra el cargo de las transferencias');
+SELECT is(jsonb_array_length(public.seller_statement('00000000-0000-0000-0000-00000000aa05')->'lines'), 1,
+  'Las ventas en efectivo no aparecen como cargos a liquidar');
+SELECT lives_ok(
+  $$ SELECT public.register_fee_payment('dueno2@test.local', NULL, 0.70, 'TRX-LIQ') $$,
+  'Administración registra el pago del vendedor');
+SELECT is((public.seller_statement('00000000-0000-0000-0000-00000000aa05')->>'balance')::numeric, 0::numeric,
+  'Con el pago registrado el saldo queda en cero');
+
+INSERT INTO public.owner_balance (owner_id, boletos_vendidos, monto_total, payment_method, platform_fee, created_at)
+VALUES ('00000000-0000-0000-0000-00000000aa05', 1, 10, 'transferencia', 1.10, now() - interval '2 months');
+SELECT is(public.seller_statement('00000000-0000-0000-0000-00000000aa05', (public.current_period() - interval '2 months')::date)->>'status', 'vencido',
+  'Un mes pasado sin pagar y fuera de plazo queda vencido');
+
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000aa04","role":"authenticated"}', true);
+SELECT is((public.my_statement()->>'fees_owed')::numeric, 0::numeric,
+  'Cada vendedor ve solo su propio estado de cuenta');
+SELECT is((SELECT count(*) FROM public.fee_payments), 0::bigint,
+  'Un vendedor no ve los pagos de otro');
+SELECT throws_ok(
+  $$ INSERT INTO public.fee_payments (owner_id, period, amount) VALUES ('00000000-0000-0000-0000-00000000aa04', public.current_period(), 1) $$,
+  '42501', NULL, 'Nadie se registra pagos a sí mismo');
 RESET ROLE;
 SELECT set_config('request.jwt.claims', NULL, true);
 
