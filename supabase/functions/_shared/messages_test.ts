@@ -1,7 +1,7 @@
 // Pruebas del aviso por SMS al vendedor.
-//   deno test supabase/functions/_shared/notify_test.ts
+//   deno test supabase/functions/_shared/messages_test.ts
 import { assertEquals, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts"
-import { sellerSms, type TicketInfo } from "./notify.ts"
+import { sellerSms, type TicketInfo } from "./messages.ts"
 
 const base: TicketInfo = {
   kind: "tour", status: "pendiente",
