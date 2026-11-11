@@ -57,6 +57,11 @@ verify_jwt = true
 [functions.contact]
 verify_jwt = true
 
+# Borrado diario de comprobantes vencidos. La llama pg_cron sin credenciales;
+# solo borra lo que proofs_to_purge() ya marcó como vencido.
+[functions.purge-proofs]
+verify_jwt = false
+
 # Retirada: responde 410. Eliminar con `npx supabase functions delete send-ticket`.
 [functions.send-ticket]
 verify_jwt = true
