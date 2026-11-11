@@ -1,35 +1,33 @@
 <template>
-  <BaseCard class="border border-gray-200 rounded-2xl shadow-lg p-6 max-w-xl mx-auto mt-8">
-    <h2 class="text-xl font-bold text-gray-900 mb-4">Resumen de la venta</h2>
+  <BaseCard class="w-full">
+    <template #title>Resumen de la venta</template>
 
-    <div class="space-y-6">
+    <div class="space-y-5">
       <div>
-        <h3 class="text-sm font-semibold text-gray-700 mb-2">Asientos seleccionados</h3>
-        <div class="flex flex-wrap gap-2">
-          <div
-            v-for="seat in selectedSeats"
-            :key="seat"
-            class="w-11 h-11 flex items-center justify-center rounded-full bg-orange-600 text-white text-sm font-bold"
-          >
+        <p class="field-label">Asientos ({{ selectedSeats.length }})</p>
+        <ul class="flex flex-wrap gap-2">
+          <li v-for="seat in selectedSeats" :key="seat"
+            class="inline-flex size-10 items-center justify-center rounded-lg border border-brand-200 bg-brand-50 text-sm font-bold text-brand-800 tabular-nums">
             {{ seat }}
-          </div>
-        </div>
+          </li>
+        </ul>
       </div>
 
-      <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-700 space-y-1">
-        <p class="flex justify-between"><span class="text-gray-500">Tour</span><strong>{{ selectedTour.name }}</strong></p>
-        <p class="flex justify-between"><span class="text-gray-500">Chiva</span><strong>{{ selectedTour.chiva }}</strong></p>
-        <p class="flex justify-between"><span class="text-gray-500">Salida</span><strong>{{ formatHour(selectedTour.departure_time) }}</strong></p>
-        <p class="flex justify-between"><span class="text-gray-500">Precio por asiento</span><strong>${{ Number(selectedTour.base_price).toFixed(2) }}</strong></p>
+      <dl class="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Tour</dt><dd class="text-right font-semibold text-gray-900">{{ selectedTour.name }}</dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Chiva</dt><dd class="text-right font-semibold text-gray-900">{{ selectedTour.chiva }}</dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Salida</dt><dd class="text-right font-semibold text-gray-900">{{ formatHour(selectedTour.departure_time) }}</dd></div>
+        <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Precio por asiento</dt><dd class="text-right font-semibold text-gray-900 tabular-nums">${{ Number(selectedTour.base_price).toFixed(2) }}</dd></div>
+      </dl>
+
+      <div class="flex items-baseline justify-between">
+        <span class="text-sm font-medium text-gray-600">Total</span>
+        <span class="text-3xl font-bold tracking-[-0.02em] text-gray-900 tabular-nums">${{ Number(subtotal).toFixed(2) }}</span>
       </div>
 
-      <div class="pt-3 border-t border-gray-200 flex justify-between items-baseline">
-        <span class="text-gray-600">Total</span>
-        <span class="text-2xl font-extrabold text-gray-900">${{ Number(subtotal).toFixed(2) }}</span>
-      </div>
-
-      <BaseButton full class="mt-2" @click="$emit('checkout')">
-        Continuar
+      <BaseButton block size="lg" @click="$emit('checkout')">
+        Ingresar datos del pasajero
+        <PhArrowRight :size="18" weight="bold" />
       </BaseButton>
     </div>
   </BaseCard>
@@ -38,6 +36,7 @@
 <script setup>
 import BaseCard from "@/components/ui/BaseCard.vue";
 import BaseButton from "@/components/ui/BaseButton.vue";
+import { PhArrowRight } from "@phosphor-icons/vue";
 
 defineProps({
   selectedSeats: { type: Array, default: () => [] },

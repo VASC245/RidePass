@@ -1,56 +1,66 @@
 <template>
-  <div class="space-y-6">
-    <!-- Leyenda -->
-    <div
-      class="flex flex-wrap items-center justify-center gap-6 text-sm font-medium text-gray-700 bg-gray-50 py-3 px-4 rounded-xl shadow-sm"
-    >
-      <div class="flex items-center gap-2">
-        <span class="w-4 h-4 bg-green-500 rounded shadow-sm"></span> Disponible
+  <div class="space-y-4">
+    <!-- Leyenda: cada estado se distingue por forma e icono, no solo por color -->
+    <ul class="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-gray-700" aria-label="Leyenda de asientos">
+      <li class="flex items-center gap-2">
+        <span class="legend-swatch seat--free" aria-hidden="true" /> Libre
+      </li>
+      <li v-if="!readonly" class="flex items-center gap-2">
+        <span class="legend-swatch seat--selected" aria-hidden="true"><PhCheck :size="11" weight="bold" /></span> Elegido
+      </li>
+      <li class="flex items-center gap-2">
+        <span class="legend-swatch seat--taken" aria-hidden="true"><PhX :size="11" weight="bold" /></span> Ocupado
+      </li>
+      <li class="flex items-center gap-2">
+        <span class="legend-swatch seat--boarded" aria-hidden="true"><PhUserCheck :size="11" weight="bold" /></span> Embarcado
+      </li>
+    </ul>
+
+    <!-- Planta de la chiva -->
+    <div class="rounded-[var(--radius-card)] border border-gray-200 bg-gray-50 p-3 sm:p-4">
+      <div class="mb-3 flex items-center justify-between text-xs font-medium text-gray-600">
+        <span class="inline-flex items-center gap-1.5"><PhSteeringWheel :size="16" /> Frente</span>
+        <span class="tabular-nums">{{ freeCount }} de {{ seats.length }} libres</span>
       </div>
-      <div class="flex items-center gap-2">
-        <span class="w-4 h-4 bg-yellow-500 rounded shadow-sm"></span> Seleccionado
+
+      <div v-if="seats.length === 0" class="py-8 text-center text-sm text-gray-600">
+        {{ loaded ? 'Esta salida no tiene asientos registrados.' : 'Cargando asientos...' }}
       </div>
-      <div class="flex items-center gap-2">
-        <span class="w-4 h-4 bg-red-500 rounded shadow-sm"></span> Pagado / Reservado
-      </div>
-      <div class="flex items-center gap-2">
-        <span class="w-4 h-4 bg-blue-500 rounded shadow-sm"></span> Abordado
+
+      <div v-else class="mx-auto grid w-fit grid-cols-5 gap-2 sm:gap-2.5">
+        <template v-for="seat in seats" :key="seat.seat_number">
+          <!-- Separación visual antes de la última fila -->
+          <div v-if="seat.seat_number === 36" class="col-span-5 h-4" aria-hidden="true"></div>
+
+          <button
+            type="button"
+            class="seat"
+            :class="[seatClass(seat), readonly && 'seat--readonly']"
+            :disabled="readonly || isTaken(seat)"
+            :aria-pressed="readonly ? undefined : isSelected(seat)"
+            :aria-label="`Asiento ${seat.seat_number}, ${seatLabel(seat)}`"
+            @click="!readonly && toggleSeat(seat)"
+          >
+            <span :class="isTaken(seat) && !isBoarded(seat) && 'line-through decoration-2'">{{ seat.seat_number }}</span>
+            <span v-if="isSelected(seat)" class="seat-mark bg-gray-900 text-white"><PhCheck :size="10" weight="bold" /></span>
+            <span v-else-if="isBoarded(seat)" class="seat-mark bg-info-700 text-white"><PhUserCheck :size="10" weight="bold" /></span>
+            <span v-else-if="isTaken(seat)" class="seat-mark bg-gray-500 text-white"><PhX :size="10" weight="bold" /></span>
+          </button>
+        </template>
       </div>
     </div>
 
-    <!-- Grilla de asientos -->
-    <div
-      class="grid grid-cols-5 gap-3 justify-items-center p-6 bg-white border border-gray-200 rounded-2xl shadow-md"
-    >
-      <template v-for="seat in seats" :key="seat.seat_number">
-
-        <!-- Separación visual EXACTA como tu local -->
-        <div v-if="seat.seat_number === 36" class="col-span-5 h-6"></div>
-
-        <!-- Asiento -->
-        <div
-          class="w-12 h-12 flex items-center justify-center rounded-xl font-bold cursor-pointer transition-all duration-200 select-none text-white shadow-sm"
-          :class="[seatColor(seat), !readonly ? 'hover:scale-110' : 'opacity-80']"
-          @click="!readonly && toggleSeat(seat)"
-        >
-          {{ seat.seat_number }}
-        </div>
-      </template>
-    </div>
-
-    <!-- Asientos seleccionados EXACTO como tu local -->
-    <div v-if="selectedSeats.length && !readonly" class="text-center text-sm text-gray-700">
-      <p class="font-semibold">
-        🎟️ Asientos seleccionados:
-        <span class="text-yellow-600">{{ selectedSeats.join(', ') }}</span>
-      </p>
-    </div>
+    <p v-if="selectedSeats.length && !readonly" class="text-sm text-gray-700" aria-live="polite">
+      {{ selectedSeats.length === 1 ? 'Asiento elegido:' : 'Asientos elegidos:' }}
+      <strong class="font-semibold text-gray-900 tabular-nums">{{ selectedSeats.join(', ') }}</strong>
+    </p>
   </div>
 </template>
 
 <script setup>
-import { ref, watch, defineExpose } from "vue";
-import { supabase } from "@/lib/supabase"; // ← reemplaza backend por supabase
+import { ref, computed, watch } from "vue";
+import { PhCheck, PhX, PhUserCheck, PhSteeringWheel } from "@phosphor-icons/vue";
+import { supabase } from "@/lib/supabase";
 
 const props = defineProps({
   assignedChivaId: { type: String, required: true },
@@ -61,11 +71,8 @@ const emit = defineEmits(["selectSeats"]);
 
 const seats = ref([]);
 const selectedSeats = ref([]);
+const loaded = ref(false);
 
-/*
-  🔥 ESTA ES LA ÚNICA FUNCIÓN QUE CAMBIA (ahora usa Supabase en vez de Axios)
-  TODO LO DEMÁS ES EXACTAMENTE COMO TU LOCAL
-*/
 const loadSeats = async () => {
   if (!props.assignedChivaId) return;
 
@@ -81,10 +88,12 @@ const loadSeats = async () => {
     seats.value = data || [];
   } catch (err) {
     console.error("Error cargando asientos:", err);
+  } finally {
+    loaded.value = true;
   }
 };
 
-// 🔹 Recargar asientos si cambia el ID del tour asignado (idéntico)
+// Recargar asientos si cambia la salida
 watch(
   () => props.assignedChivaId,
   () => {
@@ -94,21 +103,34 @@ watch(
   { immediate: true }
 );
 
-// 🔹 Método público EXACTO como tu local
+// Método público: el padre recarga tras una venta
 const refreshSeats = () => loadSeats();
 defineExpose({ refreshSeats });
 
-// 🔹 Lógica de colores NO CAMBIA
-const seatColor = (seat) => {
-  if (seat.status === "boarded" || seat.status === "abordado") return "bg-blue-500";
-  if (seat.status === "paid" || seat.status === "pagado" || seat.status === "reservado")
-    return "bg-red-500";
-  if (selectedSeats.value.includes(seat.seat_number))
-    return "bg-yellow-500";
-  return "bg-green-500";
+const BOARDED = ["boarded", "abordado"];
+const TAKEN = ["paid", "pagado", "reservado", ...BOARDED];
+
+const isBoarded  = (seat) => BOARDED.includes(seat.status);
+const isTaken    = (seat) => TAKEN.includes(seat.status);
+const isSelected = (seat) => selectedSeats.value.includes(seat.seat_number);
+
+const seatClass = (seat) => {
+  if (isBoarded(seat)) return "seat--boarded";
+  if (isTaken(seat)) return "seat--taken";
+  if (isSelected(seat)) return "seat--selected";
+  return "seat--free";
 };
 
-// 🔹 Lógica de selección NO CAMBIA
+const seatLabel = (seat) => {
+  if (isBoarded(seat)) return "embarcado";
+  if (isTaken(seat)) return "ocupado";
+  if (isSelected(seat)) return "elegido";
+  return "libre";
+};
+
+const freeCount = computed(() => seats.value.filter((s) => !isTaken(s)).length);
+
+// Selección: solo asientos libres
 const toggleSeat = (seat) => {
   if (props.readonly) return;
 
@@ -124,3 +146,57 @@ const toggleSeat = (seat) => {
   emit("selectSeats", selectedSeats.value);
 };
 </script>
+
+<style scoped>
+.seat {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out, transform 150ms ease-out;
+}
+@media (min-width: 640px) { .seat { width: 3rem; height: 3rem; } }
+
+.seat--free { background: #fff; border-color: var(--color-gray-300); color: var(--color-gray-800); cursor: pointer; }
+.seat--free:hover { border-color: var(--color-brand-500); background: var(--color-brand-50); color: var(--color-brand-800); }
+.seat--free:active { transform: scale(0.95); }
+.seat--selected { background: var(--color-brand-600); border-color: var(--color-brand-700); color: #fff; cursor: pointer; }
+.seat--selected:active { transform: scale(0.95); }
+.seat--taken { background: var(--color-gray-200); color: var(--color-gray-500); cursor: not-allowed; }
+.seat--boarded { background: var(--color-info-50); border-color: var(--color-info-200); color: var(--color-info-700); cursor: not-allowed; }
+.seat--readonly { cursor: default; }
+.seat--readonly.seat--free:hover { border-color: var(--color-gray-300); background: #fff; color: var(--color-gray-800); }
+
+.seat-mark {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px var(--color-gray-50);
+}
+
+.legend-swatch {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border-radius: 5px;
+  border-width: 1px;
+  border-style: solid;
+}
+.legend-swatch.seat--taken { color: var(--color-gray-600); }
+</style>

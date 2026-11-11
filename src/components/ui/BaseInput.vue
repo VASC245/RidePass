@@ -1,69 +1,51 @@
 <template>
   <div class="w-full">
-    <!-- Label -->
-    <label v-if="label" :for="name" class="block text-sm font-medium text-gray-700 mb-1">
+    <label v-if="label" :for="inputId" class="mb-1.5 block text-sm font-medium text-gray-800">
       {{ label }}
     </label>
 
-    <!-- Input -->
     <input
-      :id="name"
+      :id="inputId"
       :type="type"
       :name="name"
       :placeholder="placeholder"
       :value="modelValue"
-      @input="updateValue"
-      class="w-full rounded-xl border px-4 py-2.5 text-gray-700 placeholder-gray-400 shadow-sm transition-all duration-200
-        focus:outline-none focus:ring-2 focus:ring-offset-1
-        disabled:opacity-50 disabled:cursor-not-allowed
-        "
+      :aria-invalid="variant === 'error' || !!error || undefined"
+      :aria-describedby="error ? inputId + '-error' : undefined"
+      class="field-control"
       :class="[
-        variant === 'default' && 'border-gray-300 focus:ring-blue-500',
-        variant === 'success' && 'border-green-400 focus:ring-green-500',
-        variant === 'error' && 'border-red-400 focus:ring-red-500'
+        (variant === 'error' || error) && 'field-control--error',
+        variant === 'success' && 'field-control--success',
       ]"
+      v-bind="$attrs"
+      @input="updateValue"
     />
 
-    <!-- Mensaje de error -->
-    <p v-if="error" class="mt-1 text-sm text-red-600">{{ error }}</p>
+    <p v-if="error" :id="inputId + '-error'" class="mt-1.5 text-sm text-bad-700">{{ error }}</p>
   </div>
 </template>
 
 <script setup>
-defineProps({
-  modelValue: {
-    type: [String, Number],
-    default: ''
-  },
-  type: {
-    type: String,
-    default: 'text'
-  },
-  name: {
-    type: String,
-    default: ''
-  },
-  placeholder: {
-    type: String,
-    default: ''
-  },
-  label: {
-    type: String,
-    default: ''
-  },
-  error: {
-    type: String,
-    default: ''
-  },
-  variant: {
-    type: String,
-    default: 'default' // 'default' | 'success' | 'error'
-  }
-});
+import { computed, useId } from 'vue'
 
-const emit = defineEmits(['update:modelValue']);
+defineOptions({ inheritAttrs: false })
+
+const props = defineProps({
+  modelValue:  { type: [String, Number], default: '' },
+  type:        { type: String, default: 'text' },
+  name:        { type: String, default: '' },
+  placeholder: { type: String, default: '' },
+  label:       { type: String, default: '' },
+  error:       { type: String, default: '' },
+  variant:     { type: String, default: 'default' }, // 'default' | 'success' | 'error'
+})
+
+const emit = defineEmits(['update:modelValue'])
+
+const autoId = useId()
+const inputId = computed(() => props.name || autoId)
 
 const updateValue = (event) => {
-  emit('update:modelValue', event.target.value);
-};
+  emit('update:modelValue', event.target.value)
+}
 </script>

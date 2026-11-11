@@ -17,12 +17,12 @@
       <div class="panel-left">
         <div class="left-content">
 
-          <span class="eyebrow-badge">📍 Baños de Agua Santa, Ecuador</span>
+          <span class="eyebrow-badge">Baños de Agua Santa, Ecuador</span>
 
           <h1 class="contact-headline">
             Vende más<br/>
             <span class="contact-headline-accent">tours con</span><br/>
-            ChivaPass
+            chivaspass
           </h1>
 
           <p class="contact-sub">
@@ -54,7 +54,7 @@
               ni complicaciones. Nuestros clientes reciben su QR al instante."
             </p>
             <div class="flex items-center gap-3 mt-3">
-              <div class="t-avatar">🚍</div>
+              <div class="t-avatar">CM</div>
               <div>
                 <p class="t-name">Carlos Mora</p>
                 <p class="t-role">Dueño de Chiva · Baños, Ecuador</p>
@@ -224,7 +224,7 @@ const submitForm = async () => {
 
 /* ── LEFT ── */
 .panel-left {
-  background: linear-gradient(155deg, #FFF8EC 0%, #FFE8C8 20%, #FF8C35 55%, #D04010 80%, #9B2226 100%);
+  background: linear-gradient(155deg, #EA580C 0%, #C2410C 45%, #9A3412 75%, #7C2D12 100%);
   padding: clamp(3rem,6vw,5rem) clamp(2rem,5vw,4rem);
   display: flex;
   flex-direction: column;
@@ -237,7 +237,7 @@ const submitForm = async () => {
   position: absolute;
   width: 500px; height: 500px;
   border-radius: 50%;
-  background: rgba(255,255,255,.07);
+  background: rgba(255,255,255,.06);
   top: -120px; left: -120px;
 }
 .panel-left::after {
@@ -273,17 +273,17 @@ const submitForm = async () => {
   letter-spacing: -0.01em;
   margin-bottom: 1.5rem;
 }
-.contact-headline-accent { color: #FFE8C8; }
+.contact-headline-accent { color: #FED7AA; }
 .contact-sub {
   font-size: 1rem;
-  color: rgba(255,255,255,.82);
+  color: rgba(255,255,255,.92);
   line-height: 1.65;
   max-width: 420px;
   margin-bottom: 2.5rem;
 }
 .contact-stats { display: flex; gap: 2rem; flex-wrap: wrap; }
 .contact-stat {
-  border-left: 3px solid rgba(255,255,255,.4);
+  border-left: 3px solid rgba(255,255,255,.5);
   padding-left: 1rem;
 }
 .stat-num {
@@ -292,26 +292,26 @@ const submitForm = async () => {
 }
 .stat-label {
   font-size: 0.72rem; font-weight: 500;
-  color: rgba(255,255,255,.7);
+  color: rgba(255,255,255,.85);
   letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px;
 }
 .contact-testimonial {
   margin-top: 3rem;
-  background: rgba(255,255,255,.12);
-  border: 1px solid rgba(255,255,255,.22);
+  background: rgba(0,0,0,.14);
+  border: 1px solid rgba(255,255,255,.2);
   border-radius: 16px;
   padding: 1.25rem 1.5rem;
   backdrop-filter: blur(4px);
 }
-.t-text { font-size: 0.875rem; color: rgba(255,255,255,.9); line-height: 1.6; font-style: italic; margin: 0; }
+.t-text { font-size: 0.875rem; color: #fff; line-height: 1.6; font-style: italic; margin: 0; }
 .t-avatar {
   width: 36px; height: 36px; border-radius: 50%;
   background: rgba(255,255,255,.25);
-  display: flex; align-items: center; justify-content: center; font-size: 18px;
+  display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff;
   flex-shrink: 0;
 }
 .t-name { font-size: 0.82rem; font-weight: 600; color: #fff; margin: 0; }
-.t-role { font-size: 0.72rem; color: rgba(255,255,255,.65); margin: 0; }
+.t-role { font-size: 0.72rem; color: rgba(255,255,255,.8); margin: 0; }
 
 /* ── RIGHT ── */
 .panel-right {

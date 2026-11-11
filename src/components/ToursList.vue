@@ -1,60 +1,78 @@
 <template>
-  <div class="max-w-7xl mx-auto p-8 space-y-8">
-    <div class="flex items-end justify-between gap-4 flex-wrap">
-      <div>
-        <h1 class="text-2xl font-bold text-gray-900">Mis tours</h1>
-        <p class="text-sm text-gray-500 mt-1">
-          Un tour inactivo desaparece de la página pública y no se puede vender, ni siquiera desde agencias.
-        </p>
-      </div>
-      <RouterLink to="/panel/nuevo-tour"
-        class="px-4 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800">
-        Nuevo tour
-      </RouterLink>
+  <div>
+    <PageHeader title="Tours"
+      description="Un tour inactivo desaparece de la página pública y no se puede vender, ni siquiera desde agencias.">
+      <template #actions>
+        <RouterLink to="/panel/nuevo-tour"
+          class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700">
+          <PhPlus :size="18" weight="bold" /> Nuevo tour
+        </RouterLink>
+      </template>
+    </PageHeader>
+
+    <p v-if="error" role="alert" class="mb-6 flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-4 py-3 text-sm text-bad-700">
+      <PhWarningCircle :size="18" class="mt-px shrink-0" /> {{ error }}
+    </p>
+
+    <!-- Cargando -->
+    <div v-if="loading" class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Cargando tours">
+      <div v-for="n in 3" :key="n" class="h-64 animate-pulse rounded-[var(--radius-card)] border border-gray-200 bg-white" />
     </div>
 
-    <div v-if="loading" class="text-gray-500 text-center py-10">Cargando tours...</div>
+    <BaseCard v-else-if="tours.length === 0">
+      <EmptyState :icon="PhMapTrifold" title="Todavía no tienes tours"
+        description="Crea tu primer tour con su recorrido y duración. Después le asignas salidas con fecha, hora y chiva.">
+        <RouterLink to="/panel/nuevo-tour"
+          class="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700">
+          <PhPlus :size="18" weight="bold" /> Crear tour
+        </RouterLink>
+      </EmptyState>
+    </BaseCard>
 
-    <div v-else-if="tours.length === 0" class="rounded-2xl border border-dashed border-gray-300 py-16 text-center text-gray-500">
-      Todavía no tienes tours creados.
-    </div>
-
-    <div v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
-        v-for="tour in tours"
-        :key="tour.id"
-        class="bg-white border rounded-2xl p-6 flex flex-col justify-between transition-all"
-        :class="tour.active ? 'border-gray-200' : 'border-gray-200 bg-gray-50 opacity-80'"
-      >
-        <div>
+    <ul v-else class="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      <li v-for="tour in tours" :key="tour.id"
+        class="flex flex-col rounded-[var(--radius-card)] border border-gray-200 transition-colors"
+        :class="tour.active ? 'bg-white' : 'bg-gray-50'">
+        <div class="flex-1 p-5">
           <div class="flex items-start justify-between gap-3">
-            <h2 class="font-bold text-lg text-gray-900 leading-tight">{{ tour.title }}</h2>
-            <span class="shrink-0 text-[11px] font-bold uppercase tracking-wide px-2 py-1 rounded-full"
-              :class="tour.active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'">
-              {{ tour.active ? 'Activo' : 'Inactivo' }}
-            </span>
+            <h2 class="text-lg font-semibold leading-snug text-balance" :class="tour.active ? 'text-gray-900' : 'text-gray-700'">
+              {{ tour.title }}
+            </h2>
+            <StatusBadge :status="tour.active ? 'activo' : 'inactivo'" class="mt-0.5 shrink-0" />
           </div>
-          <p class="text-sm text-gray-600 mt-2 line-clamp-3">{{ tour.description || "Sin descripción" }}</p>
-          <p class="text-sm text-gray-500 mt-2">
-            {{ tour.duration ? tour.duration + ' min' : 'Duración no especificada' }}
-            · <strong class="text-gray-900">${{ Number(tour.base_price).toFixed(2) }}</strong> por persona
-          </p>
+          <p class="mt-2 line-clamp-2 text-sm leading-relaxed text-gray-600">{{ tour.description || 'Sin descripción' }}</p>
+
+          <div class="mt-4 flex items-end justify-between gap-3">
+            <p class="text-gray-900">
+              <span class="text-2xl font-bold tracking-[-0.01em] tabular-nums">${{ Number(tour.base_price).toFixed(2) }}</span>
+              <span class="ml-1 text-sm text-gray-600">por persona</span>
+            </p>
+            <p class="flex items-center gap-1.5 text-sm text-gray-700">
+              <PhClock :size="16" class="text-gray-500" aria-hidden="true" />
+              {{ formatDuration(tour.duration) }}
+            </p>
+          </div>
         </div>
 
-        <div class="mt-5 pt-4 border-t border-gray-100 space-y-3">
-          <label class="flex items-center justify-between gap-3 cursor-pointer">
-            <span class="text-sm text-gray-700">Tour activo</span>
-            <Switch :value="tour.active" :busy="busy === tour.id + 'active'" @toggle="toggle(tour, 'active')" />
-          </label>
-          <label class="flex items-center justify-between gap-3 cursor-pointer">
-            <span class="text-sm text-gray-700">Permitir venta por agencias</span>
-            <Switch :value="tour.allow_agency_sales" :busy="busy === tour.id + 'allow_agency_sales'" @toggle="toggle(tour, 'allow_agency_sales')" />
-          </label>
+        <div class="space-y-1 border-t border-gray-200 px-5 py-3">
+          <div class="flex min-h-11 items-center justify-between gap-3">
+            <label :for="`active-${tour.id}`" class="cursor-pointer text-sm text-gray-800">Visible y a la venta</label>
+            <Switch :id="`active-${tour.id}`" :value="tour.active" :busy="busy === tour.id + 'active'" @toggle="toggle(tour, 'active')" />
+          </div>
+          <div class="flex min-h-11 items-center justify-between gap-3">
+            <label :for="`agency-${tour.id}`" class="cursor-pointer text-sm text-gray-800">Venta por agencias</label>
+            <Switch :id="`agency-${tour.id}`" :value="tour.allow_agency_sales" :busy="busy === tour.id + 'allow_agency_sales'" @toggle="toggle(tour, 'allow_agency_sales')" />
+          </div>
         </div>
-      </div>
-    </div>
 
-    <p v-if="error" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ error }}</p>
+        <div class="flex border-t border-gray-200">
+          <RouterLink :to="{ path: '/panel/nuevo-tour', query: { edit: tour.id } }"
+            class="flex h-11 flex-1 items-center justify-center gap-2 rounded-b-[var(--radius-card)] text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 hover:text-gray-900">
+            <PhPencilSimple :size="16" /> Editar tour
+          </RouterLink>
+        </div>
+      </li>
+    </ul>
   </div>
 </template>
 
@@ -62,6 +80,11 @@
 import { ref, onMounted, defineComponent, h } from "vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import StatusBadge from "@/components/ui/StatusBadge.vue";
+import { PhPlus, PhClock, PhMapTrifold, PhPencilSimple, PhWarningCircle } from "@phosphor-icons/vue";
 
 const Switch = defineComponent({
   props: { value: Boolean, busy: Boolean },
@@ -73,14 +96,23 @@ const Switch = defineComponent({
       "aria-checked": props.value,
       disabled: props.busy,
       onClick: () => emit("toggle"),
-      class: ["relative shrink-0 w-11 h-6 rounded-full transition-colors disabled:opacity-50",
-        props.value ? "bg-orange-600" : "bg-gray-300"],
+      class: ["relative shrink-0 w-11 h-6 rounded-full transition-colors duration-150 disabled:opacity-50",
+        props.value ? "bg-brand-600" : "bg-gray-300"],
     }, [h("span", {
-      class: ["absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform",
+      class: ["absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ease-out",
         props.value ? "translate-x-5" : ""],
     })]);
   },
 });
+
+// 240 → "4 h", 150 → "2 h 30 min", 45 → "45 min"
+const formatDuration = (min) => {
+  const m = Number(min);
+  if (!m) return "Sin duración";
+  const h = Math.floor(m / 60), r = m % 60;
+  if (!h) return `${r} min`;
+  return r ? `${h} h ${r} min` : `${h} h`;
+};
 
 const auth = useAuthStore();
 const tours = ref([]);

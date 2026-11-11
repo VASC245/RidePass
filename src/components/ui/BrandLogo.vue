@@ -20,7 +20,8 @@ import { computed } from 'vue'
 // variant:
 //   orange → marca y texto en naranja (fondos claros)
 //   dark   → marca naranja, texto casi negro (paneles)
-//   white  → todo blanco (fondos oscuros o naranjas)
+//   white  → todo blanco (fondos naranjas)
+//   onDark → marca naranja, texto claro (barra lateral oscura)
 const props = defineProps({
   size:     { type: Number, default: 28 },
   variant:  { type: String, default: 'orange' },
@@ -29,7 +30,8 @@ const props = defineProps({
 
 const BRAND = '#F77F00'
 const markColor = computed(() => (props.variant === 'white' ? '#FFFFFF' : BRAND))
-const textColor = computed(() =>
-  props.variant === 'white' ? '#FFFFFF' : props.variant === 'dark' ? '#111827' : BRAND)
+const textColor = computed(() => ({
+  white: '#FFFFFF', onDark: '#F6F1EE', dark: '#111827',
+}[props.variant] ?? BRAND))
 const gap = computed(() => Math.max(4, Math.round(props.size * 0.3)))
 </script>

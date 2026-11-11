@@ -1,78 +1,75 @@
 <template>
-  <div class="space-y-8">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <h1 class="text-2xl font-extrabold text-gray-800">Dashboard</h1>
+  <div>
+    <PageHeader title="Resumen" :description="`Tus ventas pagadas ${periodPhrase}.`">
+      <template #actions>
+        <SegmentedControl v-model="period" :options="periods" label="Período" />
+      </template>
+    </PageHeader>
 
-      <!-- Filtros de período -->
-      <div class="flex gap-2">
-        <button v-for="f in periods" :key="f.value" @click="period = f.value"
-          class="px-4 py-2 rounded-xl text-sm font-semibold transition"
-          :class="period === f.value ? 'bg-green-600 text-white shadow-sm' : 'bg-white border border-gray-200 text-gray-600 hover:border-green-400'">
-          {{ f.label }}
-        </button>
-      </div>
-    </div>
+    <div class="space-y-6">
+      <UpgradeBanner :tickets-used="totalTickets" :events-active="totalEvents" />
 
-    <UpgradeBanner :tickets-used="totalTickets" :events-active="totalEvents" />
-
-    <!-- KPIs -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div v-for="kpi in kpis" :key="kpi.label"
-        class="bg-white rounded-2xl shadow-sm border p-5">
-        <p class="text-sm text-gray-500 font-medium">{{ kpi.label }}</p>
-        <p class="text-3xl font-extrabold mt-1" :class="kpi.color">{{ kpi.value }}</p>
-        <p v-if="kpi.sub" class="text-xs text-gray-400 mt-1">{{ kpi.sub }}</p>
-      </div>
-    </div>
-
-    <!-- Gráficas -->
-    <div class="grid lg:grid-cols-2 gap-6">
-      <!-- Ingresos por día -->
-      <div class="bg-white rounded-2xl shadow-sm border p-5">
-        <h3 class="font-bold text-gray-700 mb-4">Ingresos por día ($)</h3>
-        <div v-if="chartData.labels.length === 0" class="text-center py-8 text-gray-400 text-sm">Sin datos en este período</div>
-        <div v-else class="space-y-2">
-          <div v-for="(label, i) in chartData.labels" :key="label" class="flex items-center gap-3">
-            <span class="text-xs text-gray-400 w-20 shrink-0">{{ label }}</span>
-            <div class="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
-              <div class="h-full bg-green-500 rounded-full transition-all duration-500"
-                :style="{ width: barWidth(chartData.revenue[i], maxRevenue) }"></div>
-            </div>
-            <span class="text-xs font-bold text-gray-700 w-16 text-right">${{ chartData.revenue[i].toFixed(2) }}</span>
-          </div>
+      <!-- Cifras del período -->
+      <section class="grid overflow-hidden rounded-[var(--radius-card)] border border-gray-200 bg-white lg:grid-cols-[1.3fr_2fr]" aria-label="Cifras del período">
+        <div class="border-b border-gray-200 p-5 sm:p-6 lg:border-b-0 lg:border-r">
+          <p class="text-sm font-medium text-gray-600">Tu ganancia</p>
+          <p class="mt-2 text-4xl font-bold tracking-[-0.02em] text-gray-900 tabular-nums">
+            <span class="text-gray-400">$</span>{{ totalRevenue }}
+          </p>
+          <p class="mt-2 text-sm text-gray-600">Ventas de chivas y de negocios.</p>
         </div>
-      </div>
-
-      <!-- Ventas por fuente -->
-      <div class="bg-white rounded-2xl shadow-sm border p-5">
-        <h3 class="font-bold text-gray-700 mb-4">Entradas vendidas por día</h3>
-        <div v-if="chartData.labels.length === 0" class="text-center py-8 text-gray-400 text-sm">Sin datos en este período</div>
-        <div v-else class="space-y-2">
-          <div v-for="(label, i) in chartData.labels" :key="label + '-v'" class="flex items-center gap-3">
-            <span class="text-xs text-gray-400 w-20 shrink-0">{{ label }}</span>
-            <div class="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
-              <div class="h-full bg-blue-500 rounded-full transition-all duration-500"
-                :style="{ width: barWidth(chartData.tickets[i], maxTickets) }"></div>
-            </div>
-            <span class="text-xs font-bold text-gray-700 w-16 text-right">{{ chartData.tickets[i] }}</span>
+        <dl class="grid grid-cols-3 divide-x divide-gray-200">
+          <div v-for="m in metrics" :key="m.label" class="p-5 sm:p-6">
+            <dt class="text-sm font-medium text-gray-600">{{ m.label }}</dt>
+            <dd class="mt-2 text-2xl font-bold text-gray-900 tabular-nums">{{ m.value }}</dd>
           </div>
-        </div>
-      </div>
-    </div>
+        </dl>
+      </section>
 
-    <!-- Últimas ventas -->
-    <div class="bg-white rounded-2xl shadow-sm border p-6">
-      <h3 class="font-bold text-gray-700 mb-4">Últimas transacciones</h3>
-      <div v-if="recentSales.length === 0" class="text-center py-6 text-gray-400 text-sm">Sin ventas en este período</div>
-      <div v-else class="space-y-2">
-        <div v-for="s in recentSales" :key="s.id"
-          class="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-0">
-          <div>
-            <p class="font-semibold text-gray-800 text-sm">{{ s.label }}</p>
-            <p class="text-xs text-gray-400">{{ s.date }} · {{ s.source }}</p>
-          </div>
-          <span class="font-extrabold text-green-600">${{ Number(s.amount).toFixed(2) }}</span>
-        </div>
+      <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <!-- Por día -->
+        <BaseCard>
+          <template #title>Por día</template>
+          <EmptyState v-if="chartData.labels.length === 0" :icon="PhChartBar"
+            title="Sin ventas en este período"
+            description="Cuando se pague una venta, aquí verás cuánto ganaste cada día." />
+          <ul v-else class="space-y-3.5">
+            <li v-for="(label, i) in chartData.labels" :key="label" class="grid grid-cols-[6.5rem_1fr_auto] items-center gap-x-3">
+              <div>
+                <p class="text-sm text-gray-800 first-letter:uppercase whitespace-nowrap">{{ label }}</p>
+                <p class="text-xs text-gray-600 tabular-nums">{{ chartData.tickets[i] }} {{ chartData.tickets[i] === 1 ? 'entrada' : 'entradas' }}</p>
+              </div>
+              <div class="h-2 overflow-hidden rounded-full bg-gray-100">
+                <div class="h-full rounded-full bg-brand-500 transition-[width] duration-300 ease-out" :style="{ width: barWidth(chartData.revenue[i], maxRevenue) }" />
+              </div>
+              <span class="w-16 text-right text-sm font-semibold text-gray-900 tabular-nums">${{ chartData.revenue[i].toFixed(2) }}</span>
+            </li>
+          </ul>
+        </BaseCard>
+
+        <!-- Últimas transacciones -->
+        <BaseCard>
+          <template #title>Últimas transacciones</template>
+          <template v-if="recentSales.length" #actions>
+            <RouterLink to="/panel/mis-ventas" class="text-sm font-semibold text-brand-700 hover:text-brand-800">Ver ventas</RouterLink>
+          </template>
+          <EmptyState v-if="recentSales.length === 0" :icon="PhReceipt"
+            title="Todavía no hay transacciones"
+            description="Las ventas pagadas en este período aparecerán aquí." />
+          <ul v-else class="-my-2 divide-y divide-gray-100">
+            <li v-for="s in recentSales" :key="s.id" class="flex items-center gap-3 py-3">
+              <span class="inline-flex size-9 shrink-0 items-center justify-center rounded-full"
+                :class="s.source === 'Chiva' ? 'bg-brand-50 text-brand-700' : 'bg-info-50 text-info-700'">
+                <component :is="s.source === 'Chiva' ? PhBus : PhTicket" :size="18" />
+              </span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate text-sm font-semibold text-gray-900">{{ s.label }}</p>
+                <p class="text-xs text-gray-600">{{ s.date }}</p>
+              </div>
+              <span class="text-sm font-semibold text-gray-900 tabular-nums">${{ Number(s.amount).toFixed(2) }}</span>
+            </li>
+          </ul>
+        </BaseCard>
       </div>
     </div>
   </div>
@@ -83,6 +80,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
 import UpgradeBanner from '@/components/shared/UpgradeBanner.vue'
+import PageHeader from '@/components/ui/PageHeader.vue'
+import BaseCard from '@/components/ui/BaseCard.vue'
+import EmptyState from '@/components/ui/EmptyState.vue'
+import SegmentedControl from '@/components/ui/SegmentedControl.vue'
+import { PhBus, PhTicket, PhChartBar, PhReceipt } from '@phosphor-icons/vue'
 
 const auth   = useAuthStore()
 const period = ref('semana')
@@ -93,6 +95,9 @@ const periods = [
   { label: 'Mes',      value: 'mes'    },
   { label: 'Todo',     value: 'todo'   },
 ]
+
+const PERIOD_PHRASES = { hoy: 'de hoy', semana: 'de los últimos 7 días', mes: 'de este mes', todo: 'desde el inicio' }
+const periodPhrase = computed(() => PERIOD_PHRASES[period.value])
 
 const chivaSales = ref([])
 const bizTickets = ref([])
@@ -149,11 +154,10 @@ const totalTickets = computed(() => {
   return chiva + biz
 })
 
-const kpis = computed(() => [
-  { label: 'Ingresos totales',  value: `$${totalRevenue.value}`,     color: 'text-green-600',  sub: 'chivas + negocios' },
-  { label: 'Entradas vendidas', value: totalTickets.value,            color: 'text-blue-600',   sub: null },
-  { label: 'Tours (chivas)',    value: chivaSales.value.length,       color: 'text-orange-500', sub: null },
-  { label: 'Tickets (negocio)', value: bizTickets.value.length,       color: 'text-purple-600', sub: null },
+const metrics = computed(() => [
+  { label: 'Entradas',       value: totalTickets.value },
+  { label: 'Ventas de tours', value: chivaSales.value.length },
+  { label: 'Tickets de negocio', value: bizTickets.value.length },
 ])
 
 // ── Gráficas por día ─────────────────────────────────────────
@@ -172,14 +176,13 @@ const chartData = computed(() => {
 
   const labels = Object.keys(revenueMap).sort()
   return {
-    labels:  labels.map(l => new Date(l).toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric', month: 'short' })),
+    labels:  labels.map(l => new Date(l + 'T12:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric', month: 'short' })),
     revenue: labels.map(l => revenueMap[l]),
     tickets: labels.map(l => ticketsMap[l]),
   }
 })
 
 const maxRevenue = computed(() => Math.max(...chartData.value.revenue, 1))
-const maxTickets = computed(() => Math.max(...chartData.value.tickets, 1))
 const barWidth   = (val, max) => `${Math.round((val / max) * 100)}%`
 
 // ── Últimas ventas ───────────────────────────────────────────
@@ -187,7 +190,7 @@ const recentSales = computed(() => {
   const list = [
     ...chivaSales.value.map(s => ({
       id: s.id, amount: s.owner_gain,
-      label: `Tour chiva`,
+      label: 'Venta de tour',
       source: 'Chiva',
       date: new Date(s.created_at).toLocaleDateString('es-EC', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
       ts: s.created_at,

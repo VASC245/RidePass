@@ -1,122 +1,103 @@
 <template>
-  <div class="bg-white rounded-2xl shadow-lg border border-gray-200 p-8 max-w-4xl mx-auto space-y-8">
-    <h3 class="text-3xl font-extrabold text-center text-gray-800">
-      {{ editing ? "✏️ Editar Tour" : "🎯 Crear Nuevo Tour" }}
-    </h3>
+  <div>
+    <PageHeader :title="editing ? 'Editar tour' : 'Crear tour'"
+      :description="editing ? `Estás editando ${form.title || 'este tour'}. Los cambios se ven en la página pública al guardar.` : 'Describe el recorrido como lo leería un turista: qué ve, dónde para y cuánto dura.'" />
 
-    <!-- Formulario -->
-    <form @submit.prevent="saveTour" class="space-y-6">
-      <div>
-        <label class="block mb-2 text-sm font-semibold text-gray-700">Título</label>
-        <input
-          v-model="form.title"
-          type="text"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-          required
-        />
-      </div>
+    <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <!-- Formulario -->
+      <BaseCard :variant="editing ? 'highlight' : 'default'">
+        <form class="space-y-5" @submit.prevent="saveTour">
+          <div>
+            <label for="tour-title" class="field-label">Nombre del tour</label>
+            <input id="tour-title" ref="titleField" v-model="form.title" type="text" class="field-control" placeholder="Ej.: Ruta de las Cascadas" required />
+          </div>
 
-      <div>
-        <label class="block mb-2 text-sm font-semibold text-gray-700">Descripción</label>
-        <textarea
-          v-model="form.description"
-          rows="3"
-          class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-        ></textarea>
-      </div>
+          <div>
+            <label for="tour-desc" class="field-label">Descripción</label>
+            <textarea id="tour-desc" v-model="form.description" rows="4" class="field-control"
+              placeholder="Ej.: Recorrido por Agoyán y el Pailón del Diablo con paradas para fotos." />
+          </div>
 
-      <div class="grid md:grid-cols-2 gap-6">
-        <div>
-          <label class="block mb-2 text-sm font-semibold text-gray-700">💰 Precio base (USD)</label>
-          <input
-            v-model.number="form.base_price"
-            type="number"
-            disabled
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl bg-gray-100 text-gray-600 cursor-not-allowed"
-          />
-          <p class="text-xs text-gray-500 mt-1">El precio base es fijo: $2</p>
+          <div class="grid gap-5 sm:grid-cols-2">
+            <div>
+              <label for="tour-price" class="field-label">Precio por persona (USD)</label>
+              <input id="tour-price" v-model.number="form.base_price" type="number" inputmode="decimal" min="0.5" max="1000" step="0.01"
+                class="field-control tabular-nums" placeholder="Ej.: 10.00" required
+                :aria-invalid="priceError ? 'true' : undefined" aria-describedby="tour-price-hint" />
+              <p id="tour-price-hint" class="field-hint" :class="priceError && 'text-bad-700'">
+                {{ priceError || 'Lo que paga cada pasajero. En ventas web se suma el cargo por servicio.' }}
+              </p>
+            </div>
+            <div>
+              <label for="tour-duration" class="field-label">Duración (minutos)</label>
+              <input id="tour-duration" v-model.number="form.duration" type="number" min="1" class="field-control tabular-nums" required />
+            </div>
+          </div>
+
+          <p v-if="saveError" role="alert" class="rounded-lg border border-bad-200 bg-bad-50 px-4 py-3 text-sm text-bad-700">{{ saveError }}</p>
+
+          <div class="flex flex-wrap items-center gap-2 border-t border-gray-200 pt-5">
+            <BaseButton type="submit" :loading="saving">{{ editing ? 'Guardar cambios' : 'Guardar tour' }}</BaseButton>
+            <BaseButton v-if="editing" variant="ghost" @click="cancelEdit">Cancelar edición</BaseButton>
+          </div>
+        </form>
+      </BaseCard>
+
+      <!-- Tours existentes -->
+      <BaseCard :padded="false">
+        <div class="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+          <h2 class="text-base font-semibold text-gray-900">Tus tours</h2>
+          <span v-if="tours.length" class="text-sm text-gray-600 tabular-nums">{{ tours.length }}</span>
         </div>
-
-        <div>
-          <label class="block mb-2 text-sm font-semibold text-gray-700">Duración (minutos)</label>
-          <input
-            v-model.number="form.duration"
-            type="number"
-            min="1"
-            class="w-full px-4 py-2.5 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-            required
-          />
-        </div>
-      </div>
-
-      <div class="flex gap-3 justify-center">
-        <button
-          type="submit"
-          class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
-        >
-          {{ editing ? "💾 Guardar cambios" : "✅ Guardar tour" }}
-        </button>
-        <button
-          v-if="editing"
-          type="button"
-          @click="cancelEdit"
-          class="bg-gray-400 hover:bg-gray-500 text-white px-6 py-3 rounded-xl font-semibold shadow-sm transition active:scale-95"
-        >
-          ❌ Cancelar
-        </button>
-      </div>
-    </form>
-
-    <!-- Lista de tours -->
-    <div v-if="tours.length" class="space-y-4 mt-10">
-      <h4 class="font-bold text-lg text-gray-800 mb-4">📋 Tours Registrados</h4>
-
-      <div
-        v-for="tour in tours"
-        :key="tour.id"
-        class="bg-gray-50 rounded-xl p-5 border border-gray-200 shadow-sm flex justify-between items-start hover:shadow-md transition"
-      >
-        <div>
-          <p class="font-bold text-gray-800 text-lg">{{ tour.title }} – ${{ tour.base_price }}</p>
-          <p class="text-sm text-gray-600 mt-1">{{ tour.description }}</p>
-          <p class="text-sm text-gray-600 mt-1">🕒 Duración: {{ tour.duration }} min</p>
-        </div>
-
-        <div class="flex gap-2">
-          <button
-            @click="editTour(tour)"
-            class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
-          >
-            ✏️ Editar
-          </button>
-          <button
-            @click="deleteTour(tour.id)"
-            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm transition active:scale-95"
-          >
-            🗑️ Eliminar
-          </button>
-        </div>
-      </div>
+        <ul v-if="tours.length" class="divide-y divide-gray-100">
+          <li v-for="tour in tours" :key="tour.id" class="flex items-center gap-2 py-3 pl-5 pr-3"
+            :class="editingId === tour.id && 'bg-brand-50'">
+            <div class="min-w-0 flex-1">
+              <p class="truncate text-sm font-semibold text-gray-900">{{ tour.title }}</p>
+              <p class="text-xs text-gray-600 tabular-nums">
+                ${{ Number(tour.base_price).toFixed(2) }} · {{ tour.duration }} min
+              </p>
+            </div>
+            <button type="button" class="icon-btn" :aria-label="`Editar ${tour.title}`" title="Editar" @click="editTour(tour)">
+              <PhPencilSimple :size="18" />
+            </button>
+            <button type="button" class="icon-btn icon-btn--danger" :aria-label="`Eliminar ${tour.title}`" title="Eliminar" @click="deleteTour(tour.id)">
+              <PhTrash :size="18" />
+            </button>
+          </li>
+        </ul>
+        <EmptyState v-else :icon="PhMapTrifold" title="Aún no hay tours"
+          description="El primero que guardes aparecerá aquí para editarlo." />
+      </BaseCard>
     </div>
-    <p v-else class="text-gray-500 text-center italic mt-8">
-      🚫 No hay tours registrados.
-    </p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, onMounted, nextTick } from "vue";
+import { useRoute } from "vue-router";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
+import BaseButton from "@/components/ui/BaseButton.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import { PhPencilSimple, PhTrash, PhMapTrifold } from "@phosphor-icons/vue";
 
 const auth = useAuthStore();
+const route = useRoute();
+const titleField = ref(null);
 
-const form = ref({ title: "", description: "", base_price: 2, duration: 60 });
+const EMPTY_FORM = () => ({ title: "", description: "", base_price: null, duration: 60 });
+const form = ref(EMPTY_FORM());
+const saving = ref(false);
+const saveError = ref("");
+const priceError = ref("");
 const tours = ref([]);
 const editing = ref(false);
 const editingId = ref(null);
 
-// 🔹 Cargar tours del dueño
+// Cargar tours del dueño
 const fetchTours = async () => {
   if (!auth.user) return;
   const { data, error } = await supabase
@@ -127,39 +108,62 @@ const fetchTours = async () => {
   if (!error) tours.value = data;
 };
 
-// 🔹 Guardar o editar tour (precio fijo $2)
+// El dueño fija el precio por persona. Mismos límites que la base
+// (tours_base_price_range): entre $0.50 y $1000, con centavos.
+const validPrice = (v) => {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0.5 || n > 1000) return null;
+  return Math.round(n * 100) / 100;
+};
+
+// Guardar o editar tour
 const saveTour = async () => {
   if (!auth.user) {
-    alert("⚠️ Debes iniciar sesión antes de crear tours.");
+    saveError.value = "Tu sesión expiró. Vuelve a iniciar sesión para guardar.";
     return;
   }
+  const price = validPrice(form.value.base_price);
+  priceError.value = price === null ? "Ingresa un precio entre $0.50 y $1000." : "";
+  if (price === null) return;
 
-  form.value.base_price = 2;
+  saving.value = true;
+  saveError.value = "";
+  const payload = {
+    title: form.value.title,
+    description: form.value.description,
+    duration: form.value.duration,
+    base_price: price,
+  };
 
-  if (editing.value) {
-    await supabase
-      .from("tours")
-      .update({ ...form.value, base_price: 2 })
-      .eq("id", editingId.value)
-      .eq("user_id", auth.user.id);
-  } else {
-    await supabase
-      .from("tours")
-      .insert([{ ...form.value, user_id: auth.user.id, base_price: 2 }]);
+  const { error } = editing.value
+    ? await supabase.from("tours").update(payload).eq("id", editingId.value).eq("user_id", auth.user.id)
+    : await supabase.from("tours").insert([{ ...payload, user_id: auth.user.id }]);
+  saving.value = false;
+
+  if (error) {
+    console.error("guardar tour:", error);
+    saveError.value = "No se pudo guardar el tour. Revisa los datos e intenta de nuevo.";
+    return;
   }
 
   cancelEdit();
   fetchTours();
 };
 
-// 🔹 Editar
+// Editar
 const editTour = (tour) => {
   editing.value = true;
   editingId.value = tour.id;
-  form.value = { ...tour, base_price: 2 };
+  form.value = { title: tour.title, description: tour.description, duration: tour.duration, base_price: Number(tour.base_price) };
+  priceError.value = "";
+  saveError.value = "";
+  nextTick(() => {
+    titleField.value?.focus();
+    titleField.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 };
 
-// 🔹 Eliminar
+// Eliminar
 const deleteTour = async (id) => {
   if (!confirm("¿Seguro que deseas eliminar este tour?")) return;
   await supabase
@@ -170,12 +174,34 @@ const deleteTour = async (id) => {
   fetchTours();
 };
 
-// 🔹 Cancelar
+// Cancelar
 const cancelEdit = () => {
   editing.value = false;
   editingId.value = null;
-  form.value = { title: "", description: "", base_price: 2, duration: 60 };
+  form.value = EMPTY_FORM();
+  priceError.value = "";
+  saveError.value = "";
 };
 
-onMounted(fetchTours);
+// Desde la lista de tours se llega con ?edit=<id> para abrir ese tour
+onMounted(async () => {
+  await fetchTours();
+  const target = tours.value.find((t) => t.id === route.query.edit);
+  if (target) editTour(target);
+});
 </script>
+
+<style scoped>
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem; height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: 8px;
+  color: var(--color-gray-600);
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+.icon-btn:hover { background: var(--color-gray-100); color: var(--color-gray-900); }
+.icon-btn--danger:hover { background: var(--color-bad-50); color: var(--color-bad-700); }
+</style>

@@ -22,18 +22,30 @@ export const useAuthStore = defineStore("auth", {
           if (event === "SIGNED_OUT" || !session?.user) {
             this.user = null;
           } else if (!this.user || this.user.id !== session.user.id) {
-            this.loadUserProfile(session.user.id).catch(() => (this.user = null));
+            // Diferido: consultar Supabase dentro de este callback puede
+            // bloquear el candado de auth (recomendación de supabase-js).
+            const uid = session.user.id;
+            setTimeout(() => this.loadUserProfile(uid).catch(() => (this.user = null)), 0);
           }
         });
       }
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await this.loadUserProfile(session.user.id);
-      } else {
+      // Si el perfil no carga (red caída, 504 del plan Free, perfil borrado)
+      // la app debe seguir: sin esto la guardia del router lanzaba y la
+      // navegación quedaba en blanco.
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          await this.loadUserProfile(session.user.id);
+        } else {
+          this.user = null;
+        }
+      } catch (e) {
+        console.error("auth init:", e?.message ?? e);
         this.user = null;
+      } finally {
+        this.ready = true;
       }
-      this.ready = true;
     },
 
     async login(email, password) {

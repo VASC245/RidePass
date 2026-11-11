@@ -1,32 +1,31 @@
 <template>
-  <div
+  <section
     :class="[
-      'bg-white rounded-2xl p-6 border transition-all duration-200 shadow-sm hover:shadow-lg',
-      variant === 'default' && 'border-gray-200',
-      variant === 'highlight' && 'border-blue-300 bg-blue-50',
-      variant === 'danger' && 'border-red-300 bg-red-50'
+      'rounded-[var(--radius-card)] border',
+      padded && 'p-5 sm:p-6',
+      variant === 'default' && 'bg-white border-gray-200',
+      variant === 'highlight' && 'bg-brand-50 border-brand-200',
+      variant === 'danger' && 'bg-bad-50 border-bad-200',
+      variant === 'muted' && 'bg-gray-50 border-gray-200',
     ]"
   >
-    <!-- Header opcional -->
-    <div v-if="$slots.title || $slots.actions" class="flex items-center justify-between mb-4">
-      <div v-if="$slots.title" class="text-lg font-semibold text-gray-800">
+    <header v-if="$slots.title || $slots.actions" class="mb-4 flex items-center justify-between gap-3">
+      <h2 v-if="$slots.title" class="text-base font-semibold text-gray-900">
         <slot name="title" />
-      </div>
-      <div v-if="$slots.actions">
+      </h2>
+      <div v-if="$slots.actions" class="flex items-center gap-2">
         <slot name="actions" />
       </div>
-    </div>
+    </header>
 
-    <!-- Contenido principal -->
     <slot />
-  </div>
+  </section>
 </template>
 
 <script setup>
 defineProps({
-  variant: {
-    type: String,
-    default: "default" // 'default' | 'highlight' | 'danger'
-  }
-});
+  // 'default' | 'highlight' | 'danger' | 'muted'
+  variant: { type: String, default: 'default' },
+  padded:  { type: Boolean, default: true },
+})
 </script>

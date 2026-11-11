@@ -1,122 +1,119 @@
 <template>
-  <div class="max-w-6xl mx-auto py-10 px-6 space-y-8">
-    <div>
-      <h2 class="text-2xl font-bold text-gray-900">Salidas programadas</h2>
-      <p class="text-sm text-gray-500 mt-1">
-        Cada salida abre o cierra sus ventas de forma independiente. Cerrar una salida no afecta a las ya vendidas.
+  <div>
+    <PageHeader title="Salidas"
+      description="Cada salida abre o cierra sus ventas por separado. Cerrar una salida no afecta a los boletos ya vendidos." />
+
+    <div class="space-y-6">
+      <!-- Formulario -->
+      <BaseCard :variant="editingId ? 'highlight' : 'default'">
+        <template #title>{{ editingId ? 'Editar salida' : 'Programar salida' }}</template>
+        <form class="space-y-4" @submit.prevent="saveSalida">
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_0.8fr]">
+            <div>
+              <label for="salida-tour" class="field-label">Tour</label>
+              <select id="salida-tour" v-model="selectedTour" class="field-control">
+                <option disabled value="">Elige un tour</option>
+                <option v-for="tour in tours" :key="tour.id" :value="tour.id">
+                  {{ tour.title }}{{ tour.active ? '' : ' (inactivo)' }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label for="salida-chiva" class="field-label">Chiva</label>
+              <select id="salida-chiva" v-model="selectedChiva" class="field-control">
+                <option disabled value="">Elige una chiva</option>
+                <option v-for="chiva in chivas" :key="chiva.id" :value="chiva.id">{{ chiva.name }}</option>
+              </select>
+            </div>
+            <div>
+              <label for="salida-fecha" class="field-label">Fecha</label>
+              <input id="salida-fecha" v-model="departureDate" type="date" :min="todayStr" class="field-control tabular-nums" />
+            </div>
+            <div>
+              <label for="salida-hora" class="field-label">Hora</label>
+              <input id="salida-hora" v-model="departureTime" type="time" class="field-control tabular-nums" />
+            </div>
+          </div>
+
+          <p v-if="formError" role="alert" class="flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-3.5 py-3 text-sm text-bad-700">
+            <PhWarningCircle :size="18" class="mt-px shrink-0" /> {{ formError }}
+          </p>
+
+          <div class="flex flex-wrap items-center justify-end gap-2">
+            <BaseButton v-if="editingId" variant="ghost" @click="cancelEdit">Cancelar</BaseButton>
+            <BaseButton type="submit" :loading="saving">{{ editingId ? 'Guardar cambios' : 'Programar salida' }}</BaseButton>
+          </div>
+        </form>
+      </BaseCard>
+
+      <p v-if="listError" role="alert" class="flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-4 py-3 text-sm text-bad-700">
+        <PhWarningCircle :size="18" class="mt-px shrink-0" /> {{ listError }}
       </p>
-    </div>
 
-    <!-- Formulario -->
-    <form @submit.prevent="saveSalida" class="bg-white p-6 rounded-2xl border border-gray-200 space-y-5">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div>
-          <label class="field-label">Tour</label>
-          <select v-model="selectedTour" class="field-input bg-white">
-            <option disabled value="">Seleccione un tour</option>
-            <option v-for="tour in tours" :key="tour.id" :value="tour.id">
-              {{ tour.title }}{{ tour.active ? '' : ' (inactivo)' }}
-            </option>
-          </select>
-        </div>
-        <div>
-          <label class="field-label">Chiva</label>
-          <select v-model="selectedChiva" class="field-input bg-white">
-            <option disabled value="">Seleccione una chiva</option>
-            <option v-for="chiva in chivas" :key="chiva.id" :value="chiva.id">{{ chiva.name }}</option>
-          </select>
-        </div>
-        <div>
-          <label class="field-label">Fecha</label>
-          <input type="date" v-model="departureDate" :min="todayStr" class="field-input" />
-        </div>
-        <div>
-          <label class="field-label">Hora de salida</label>
-          <input type="time" v-model="departureTime" class="field-input" />
-        </div>
-      </div>
+      <!-- Salidas agrupadas por día -->
+      <div v-if="salidas.length > 0" class="space-y-6">
+        <section v-for="day in salidasByDay" :key="day.key">
+          <h2 class="mb-2 flex items-baseline gap-2 px-1 text-sm font-semibold text-gray-900">
+            <span class="inline-block first-letter:uppercase">{{ day.label }}</span>
+            <span class="font-normal text-gray-600 tabular-nums">{{ day.items.length }} {{ day.items.length === 1 ? 'salida' : 'salidas' }}</span>
+          </h2>
+          <ul class="divide-y divide-gray-100 overflow-hidden rounded-[var(--radius-card)] border border-gray-200 bg-white">
+            <li v-for="salida in day.items" :key="salida.id"
+              class="flex flex-wrap items-center gap-x-4 gap-y-3 px-4 py-4 sm:flex-nowrap sm:px-5"
+              :class="editingId === salida.id && 'bg-brand-50'">
+              <p class="w-14 shrink-0 text-lg font-bold text-gray-900 tabular-nums">{{ formatTime(salida.departure_at) }}</p>
 
-      <p v-if="formError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ formError }}</p>
+              <div class="min-w-0 flex-1 basis-32">
+                <p class="line-clamp-2 font-semibold text-gray-900">{{ salida.tours?.title ?? 'Tour eliminado' }}</p>
+                <p class="flex items-center gap-1.5 text-sm text-gray-600">
+                  <PhBus :size="15" aria-hidden="true" /> {{ salida.chivas?.name ?? 'Sin chiva' }}
+                </p>
+              </div>
 
-      <div class="flex gap-3 justify-end">
-        <button v-if="editingId" type="button" @click="cancelEdit"
-          class="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50">
-          Cancelar
-        </button>
-        <button type="submit" :disabled="saving"
-          class="px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50">
-          {{ saving ? 'Guardando...' : (editingId ? 'Guardar cambios' : 'Programar salida') }}
-        </button>
-      </div>
-    </form>
+              <StatusBadge :tone="statusOf(salida).tone" class="order-3 shrink-0 sm:order-none">{{ statusOf(salida).label }}</StatusBadge>
 
-    <!-- Lista de salidas -->
-    <div v-if="salidas.length > 0" class="overflow-x-auto border border-gray-200 rounded-2xl">
-      <table class="w-full text-left text-sm">
-        <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-          <tr>
-            <th class="px-5 py-3">Tour</th>
-            <th class="px-5 py-3">Chiva</th>
-            <th class="px-5 py-3">Salida</th>
-            <th class="px-5 py-3">Estado</th>
-            <th class="px-5 py-3">Ventas</th>
-            <th class="px-5 py-3 text-right">Acciones</th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100">
-          <tr v-for="salida in salidas" :key="salida.id" class="hover:bg-gray-50">
-            <td class="px-5 py-3 font-medium text-gray-800">{{ salida.tours?.title }}</td>
-            <td class="px-5 py-3 text-gray-600">{{ salida.chivas?.name }}</td>
-            <td class="px-5 py-3 text-gray-600">{{ formatDate(salida.departure_at) }}</td>
-            <td class="px-5 py-3">
-              <span class="text-xs font-bold uppercase tracking-wide px-2 py-1 rounded-full"
-                :class="{
-                  'bg-yellow-100 text-yellow-700': salida.status === 'pendiente',
-                  'bg-green-100 text-green-700': salida.status === 'en_curso',
-                  'bg-gray-200 text-gray-600': salida.status === 'finalizado',
-                }">
-                {{ salida.status }}
-              </span>
-            </td>
-            <td class="px-5 py-3">
-              <button type="button" @click="toggleSales(salida)" :disabled="busy === salida.id"
-                class="inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-full border transition-colors disabled:opacity-50"
+              <button type="button" :disabled="busy === salida.id" :aria-pressed="salida.sales_open"
+                :title="salida.sales_open ? 'Cerrar ventas de esta salida' : 'Abrir ventas de esta salida'"
+                class="order-3 inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition-colors disabled:opacity-50 sm:order-none"
                 :class="salida.sales_open
-                  ? 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100'
-                  : 'border-red-200 bg-red-50 text-red-700 hover:bg-red-100'">
-                <span class="w-2 h-2 rounded-full" :class="salida.sales_open ? 'bg-green-500' : 'bg-red-500'"></span>
-                {{ salida.sales_open ? 'Abiertas' : 'Cerradas' }}
+                  ? 'border-ok-200 bg-ok-50 text-ok-700 hover:bg-white'
+                  : 'border-gray-300 bg-gray-100 text-gray-700 hover:bg-white'"
+                @click="toggleSales(salida)">
+                <component :is="salida.sales_open ? PhLockOpen : PhLock" :size="14" aria-hidden="true" />
+                {{ salida.sales_open ? 'Ventas abiertas' : 'Ventas cerradas' }}
               </button>
-            </td>
-            <td class="px-5 py-3">
-              <div class="flex gap-2 justify-end">
-                <button @click="editSalida(salida)"
-                  class="px-3 py-1.5 rounded-lg border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                  Editar
+
+              <div class="order-2 -mr-1 flex shrink-0 items-center sm:order-none">
+                <button type="button" class="icon-btn" :aria-label="`Editar salida de ${salida.tours?.title ?? 'tour'}`" title="Editar" @click="editSalida(salida)">
+                  <PhPencilSimple :size="18" />
                 </button>
-                <button @click="deleteSalida(salida)"
-                  class="px-3 py-1.5 rounded-lg border border-red-200 text-xs font-semibold text-red-700 hover:bg-red-50">
-                  Eliminar
+                <button type="button" class="icon-btn icon-btn--danger" :aria-label="`Eliminar salida de ${salida.tours?.title ?? 'tour'}`" title="Eliminar" @click="deleteSalida(salida)">
+                  <PhTrash :size="18" />
                 </button>
               </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <BaseCard v-else>
+        <EmptyState :icon="PhCalendarBlank" title="No hay salidas programadas"
+          description="Elige tour, chiva, fecha y hora arriba. Cada salida aparece aquí y en la página pública mientras tenga ventas abiertas." />
+      </BaseCard>
     </div>
-
-    <p v-else class="text-gray-500 text-center py-10 rounded-2xl border border-dashed border-gray-300">
-      No hay salidas programadas.
-    </p>
-
-    <p v-if="listError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ listError }}</p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/stores/authStore";
+import PageHeader from "@/components/ui/PageHeader.vue";
+import BaseCard from "@/components/ui/BaseCard.vue";
+import BaseButton from "@/components/ui/BaseButton.vue";
+import EmptyState from "@/components/ui/EmptyState.vue";
+import StatusBadge from "@/components/ui/StatusBadge.vue";
+import { PhBus, PhPencilSimple, PhTrash, PhLock, PhLockOpen, PhCalendarBlank, PhWarningCircle } from "@phosphor-icons/vue";
 
 const auth = useAuthStore();
 
@@ -138,8 +135,33 @@ const busy = ref("");
 const formError = ref("");
 const listError = ref("");
 
-const formatDate = (d) =>
-  new Date(d).toLocaleString("es-EC", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const formatTime = (d) => localTimeStr(new Date(d));
+
+const STATUS = {
+  pendiente:  { tone: "info",    label: "Programada" },
+  en_curso:   { tone: "success", label: "En curso" },
+  finalizado: { tone: "neutral", label: "Finalizada" },
+};
+const statusOf = (salida) => STATUS[salida.status] ?? { tone: "neutral", label: salida.status };
+
+// Agrupa por día local: "Hoy", "Mañana" o "lunes 14 de sept."
+const salidasByDay = computed(() => {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const groups = new Map();
+  for (const s of salidas.value) {
+    const d = new Date(s.departure_at);
+    const key = localDateStr(d);
+    if (!groups.has(key)) {
+      const day = new Date(d); day.setHours(0, 0, 0, 0);
+      const diff = Math.round((day - today) / 86_400_000);
+      const label = diff === 0 ? "Hoy" : diff === 1 ? "Mañana" : diff === -1 ? "Ayer"
+        : d.toLocaleDateString("es-EC", { weekday: "long", day: "numeric", month: "long" });
+      groups.set(key, { key, label, items: [] });
+    }
+    groups.get(key).items.push(s);
+  }
+  return [...groups.values()];
+});
 
 const fetchTours = async () => {
   if (!auth.user) return;
@@ -256,20 +278,15 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.field-input {
-  width: 100%;
-  padding: 0.625rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.75rem;
-  font-size: 0.875rem;
-  outline: none;
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem; height: 2.25rem;
+  border-radius: 8px;
+  color: var(--color-gray-600);
+  transition: background-color 150ms ease-out, color 150ms ease-out;
 }
-.field-input:focus { box-shadow: 0 0 0 2px #ea580c; }
-.field-label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 0.375rem;
-}
+.icon-btn:hover { background: var(--color-gray-100); color: var(--color-gray-900); }
+.icon-btn--danger:hover { background: var(--color-bad-50); color: var(--color-bad-700); }
 </style>
