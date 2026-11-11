@@ -1,10 +1,12 @@
-// Notificaciones server-to-server: correo al comprador (Resend) y WhatsApp
-// al vendedor (Twilio). Nunca se exponen como endpoint: solo las llaman
-// public-reserve y kushki-charge después de registrar la venta.
+// Notificaciones server-to-server con Brevo: correo al comprador y SMS al
+// vendedor. Nunca se exponen como endpoint: solo las llaman public-reserve y
+// kushki-charge después de registrar la venta.
 //
 // Secrets necesarios:
-//   RESEND_API_KEY, RESEND_FROM (ej. "chivaspass <noreply@smartchiva.com>")
-//   TWILIO_SID, TWILIO_TOKEN, TWILIO_WHATSAPP_FROM (ej. "whatsapp:+14155238886")
+//   BREVO_API_KEY        clave de API de Brevo (SMTP & API > API keys)
+//   BREVO_SENDER_EMAIL   remitente verificado en Brevo (ej. "tickets@chivaspass.com")
+//   BREVO_SENDER_NAME    opcional, por defecto "chivaspass"
+//   BREVO_SMS_SENDER     opcional, nombre del SMS (máx. 11 letras/números), por defecto "chivaspass"
 // Si falta alguno, la notificación se omite y se registra en el log; la
 // venta nunca falla por una notificación.
 
@@ -67,7 +69,7 @@ export function ticketEmail(t: TicketInfo): { subject: string; html: string } {
   ]
 
   // Logo alojado en el sitio (los clientes de correo no cargan SVG ni fuentes)
-  let origin = "https://chivaspass.netlify.app"
+  let origin = "https://chivaspass.com"
   try { if (t.ticketUrl) origin = new URL(t.ticketUrl).origin } catch { /* usa el valor por defecto */ }
   const logoUrl = `${origin}/img/brand/chivaspass-logo-white-on-orange.png`
 
@@ -101,52 +103,94 @@ export function ticketEmail(t: TicketInfo): { subject: string; html: string } {
   return { subject, html }
 }
 
-export async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
-  const key  = Deno.env.get("RESEND_API_KEY")
-  const from = Deno.env.get("RESEND_FROM") ?? "chivaspass <noreply@smartchiva.com>"
-  if (!key) { console.warn("[notify] RESEND_API_KEY no configurado; correo omitido"); return false }
+const BREVO_API = "https://api.brevo.com/v3"
+
+export async function sendEmail(to: string, subject: string, html: string, toName = ""): Promise<boolean> {
+  const key   = Deno.env.get("BREVO_API_KEY")
+  const email = Deno.env.get("BREVO_SENDER_EMAIL")
+  const name  = Deno.env.get("BREVO_SENDER_NAME") ?? "chivaspass"
+  if (!key || !email) { console.warn("[notify] Brevo sin BREVO_API_KEY o BREVO_SENDER_EMAIL; correo omitido"); return false }
   try {
-    const res = await fetch("https://api.resend.com/emails", {
+    const res = await fetch(`${BREVO_API}/smtp/email`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html }),
+      headers: { "api-key": key, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({
+        sender: { name, email },
+        to: [toName ? { email: to, name: toName } : { email: to }],
+        subject,
+        htmlContent: html,
+        tags: ["ticket"],
+      }),
     })
-    if (!res.ok) console.error("[notify] Resend error:", res.status, await res.text())
+    if (!res.ok) console.error("[notify] Brevo email error:", res.status, await res.text())
     return res.ok
   } catch (e) {
-    console.error("[notify] Resend fetch failed:", (e as Error).message)
+    console.error("[notify] Brevo email fetch failed:", (e as Error).message)
     return false
   }
 }
 
-export async function sendWhatsApp(phone: string, body: string): Promise<boolean> {
-  const sid   = Deno.env.get("TWILIO_SID")
-  const token = Deno.env.get("TWILIO_TOKEN")
-  const from  = Deno.env.get("TWILIO_WHATSAPP_FROM")
-  if (!sid || !token || !from) { console.warn("[notify] Twilio no configurado; WhatsApp omitido"); return false }
+// Números de Ecuador: "099 123 4567" o "0991234567" → "593991234567".
+// Brevo espera el número con código de país, sin "+".
+export function normalizePhone(phone: string): string | null {
+  const raw = String(phone ?? "").trim()
+  if (!raw) return null
+  const digits = raw.replace(/\D/g, "")
+  if (!digits) return null
+  if (raw.startsWith("+") || digits.startsWith("593")) return digits.length >= 10 ? digits : null
+  const local = digits.replace(/^0/, "")
+  return local.length === 9 ? `593${local}` : null
+}
 
-  const digits = String(phone).replace(/[^\d+]/g, "")
-  if (!digits) return false
-  const normalized = digits.startsWith("+") ? digits : `+593${digits.replace(/^0/, "")}`
-
+export async function sendSms(phone: string, content: string): Promise<boolean> {
+  const key    = Deno.env.get("BREVO_API_KEY")
+  const sender = (Deno.env.get("BREVO_SMS_SENDER") ?? "chivaspass").replace(/[^A-Za-z0-9]/g, "").slice(0, 11)
+  if (!key) { console.warn("[notify] Brevo sin BREVO_API_KEY; SMS omitido"); return false }
+  const recipient = normalizePhone(phone)
+  if (!recipient) { console.warn("[notify] teléfono inválido para SMS:", phone); return false }
   try {
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    const res = await fetch(`${BREVO_API}/transactionalSMS/send`, {
       method: "POST",
-      headers: {
-        Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ From: from, To: `whatsapp:${normalized}`, Body: body }).toString(),
+      headers: { "api-key": key, "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ sender, recipient, content, type: "transactional", tag: "venta" }),
     })
-    if (!res.ok) console.error("[notify] Twilio error:", res.status, await res.text())
+    if (!res.ok) console.error("[notify] Brevo SMS error:", res.status, await res.text())
     return res.ok
   } catch (e) {
-    console.error("[notify] Twilio fetch failed:", (e as Error).message)
+    console.error("[notify] Brevo SMS fetch failed:", (e as Error).message)
     return false
   }
 }
 
-// Aviso al vendedor (dueño de chiva o negocio) por WhatsApp.
+// Un SMS se cobra por cada 160 caracteres solo si todo el texto cabe en el
+// alfabeto GSM-7; una sola "á" lo pasa a Unicode (70 caracteres por SMS).
+// Por eso se quitan las tildes (la ñ sí es GSM) y se recorta el texto libre
+// (tour y cliente) antes que las instrucciones.
+const toGsm = (v: string) =>
+  v.normalize("NFC")
+    .replace(/[^ñÑ]/g, (c) => c.normalize("NFD").replace(/[\u0300-\u036f]/g, ""))
+    .replace(/[^\x20-\x7EñÑ\n]/g, "")
+
+const clip = (v: string, n: number) => (v.length > n ? v.slice(0, Math.max(0, n)).trimEnd() : v)
+
+export function sellerSms(t: TicketInfo): string {
+  const paid = t.status === "pagado"
+  const qty = t.kind === "tour"
+    ? (t.seats?.length && t.seats.length <= 4 ? `asientos ${t.seats.join(",")}` : `${t.seats?.length ?? t.quantity} asientos`)
+    : `${t.quantity} entradas`
+  const head = paid ? "chivaspass: Venta confirmada." : "chivaspass: Reserva por verificar."
+  const end  = paid ? "" : " Revisa el comprobante en tu panel."
+  const build = (title: string, name: string) => `${head} ${title}, ${qty}. ${name}. ${money(t.amount)}.${end}`
+
+  // Lo que sobra de 160 se reparte entre el tour (60 %) y el cliente
+  const room  = 160 - build("", "").length
+  const title = clip(toGsm(t.title), Math.max(8, Math.floor(room * 0.6)))
+  const name  = clip(toGsm(t.customer.name), Math.max(6, room - title.length))
+  return build(title, name).slice(0, 160)
+}
+
+// Aviso al vendedor (dueño de chiva o negocio) por SMS al teléfono de su
+// configuración; si no tiene, al WhatsApp registrado.
 export async function notifySeller(
   supabase: SupabaseClient,
   ownerId: string,
@@ -154,25 +198,12 @@ export async function notifySeller(
 ): Promise<void> {
   const { data } = await supabase
     .from("panel_settings")
-    .select("contact_whatsapp")
+    .select("contact_phone, contact_whatsapp")
     .eq("user_id", ownerId)
     .maybeSingle()
-  const phone = data?.contact_whatsapp
+  const phone = data?.contact_phone || data?.contact_whatsapp
   if (!phone) return
-
-  const paid = t.status === "pagado"
-  const what = t.kind === "tour"
-    ? `${t.title} · asientos ${t.seats?.join(", ") ?? t.quantity}`
-    : `${t.title} · ${t.quantity} entrada(s)`
-
-  const body = [
-    paid ? `Venta confirmada: ${what}` : `Nueva reserva pendiente: ${what}`,
-    `${t.customer.name}${t.customer.phone ? ` · ${t.customer.phone}` : ""}`,
-    `${money(t.amount)} · ${t.paymentLabel}`,
-    paid ? "El pago ya está aprobado." : "Entra a tu panel para verificar el comprobante.",
-  ].join("\n")
-
-  await sendWhatsApp(phone, body)
+  await sendSms(phone, sellerSms(t))
 }
 
 // Envía correo al comprador y aviso al vendedor sin bloquear la respuesta
@@ -180,7 +211,7 @@ export async function notifySeller(
 export async function notifyAll(supabase: SupabaseClient, ownerId: string, t: TicketInfo): Promise<void> {
   const { subject, html } = ticketEmail(t)
   await Promise.allSettled([
-    sendEmail(t.customer.email, subject, html),
+    sendEmail(t.customer.email, subject, html, t.customer.name),
     notifySeller(supabase, ownerId, t),
   ])
 }

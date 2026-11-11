@@ -108,8 +108,9 @@
         <BaseCard>
           <div class="grid gap-4 sm:grid-cols-2">
             <div>
-              <label for="cfg-phone" class="field-label">Teléfono</label>
-              <input id="cfg-phone" v-model="form.contact_phone" type="tel" placeholder="+593 99 999 9999" class="field-control tabular-nums" />
+              <label for="cfg-phone" class="field-label">Celular</label>
+              <input id="cfg-phone" v-model="form.contact_phone" type="tel" placeholder="+593 99 999 9999" class="field-control tabular-nums" aria-describedby="cfg-phone-hint" />
+              <p id="cfg-phone-hint" class="field-hint">Aquí te llega un SMS con cada venta o reserva.</p>
             </div>
             <div>
               <label for="cfg-wa" class="field-label">WhatsApp</label>
