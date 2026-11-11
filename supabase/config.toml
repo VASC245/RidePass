@@ -46,6 +46,13 @@ verify_jwt = true
 [functions.kushki-charge]
 verify_jwt = true
 
+# Cobro con tarjeta vía PayPhone (Botón de Pagos + Split).
+[functions.payphone-prepare]
+verify_jwt = true
+
+[functions.payphone-confirm]
+verify_jwt = true
+
 # Formulario de contacto del sitio público (correo vía Brevo).
 [functions.contact]
 verify_jwt = true

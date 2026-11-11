@@ -52,3 +52,24 @@ export const sellerPaymentInfo = async (supabase, ownerId) => {
   const { data } = await supabase.rpc("get_seller_payment_info", { p_owner_id: ownerId });
   return data ?? null;
 };
+
+// ─── PayPhone (Botón de Pagos con Split) ───────────────────────
+// Se muestra solo si el sitio lo tiene activo (VITE_PAYPHONE_ENABLED=true)
+// y el vendedor registró su cuenta (controls.accept_payphone).
+export const payphoneEnabled = import.meta.env.VITE_PAYPHONE_ENABLED === "true";
+
+// Reserva y prepara el cobro en el servidor. Devuelve { payUrl, clientTransactionId }.
+export const preparePayphone = (supabase, type, payload) =>
+  invoke(supabase, "payphone-prepare", { type, payload }, "No se pudo iniciar el pago con PayPhone.");
+
+// Confirma al volver de PayPhone. Devuelve SIEMPRE el cuerpo de la
+// respuesta (también en errores) porque trae retry / needsReview / cancelled.
+export const confirmPayphone = async (supabase, body) => {
+  const { data, error } = await supabase.functions.invoke("payphone-confirm", { body });
+  if (!error) return data ?? { success: false, message: "Respuesta vacía del servidor." };
+  try {
+    const errBody = await error?.context?.json?.();
+    if (errBody) return errBody;
+  } catch { /* sin cuerpo JSON */ }
+  return { success: false, retry: true, message: "No pudimos revisar tu pago. Recarga la página en un momento." };
+};

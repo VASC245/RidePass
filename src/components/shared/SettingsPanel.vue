@@ -19,7 +19,7 @@
               hint="Los clientes suben el comprobante y tú lo verificas." />
             <ToggleRow v-model="form.accept_cards"
               label="Aceptar tarjeta"
-              hint="Requiere tener Kushki configurado. El cobro se confirma al instante." />
+              hint="El cobro se confirma al instante. Para PayPhone, registra tu cuenta en Cobros con tarjeta." />
             <ToggleRow v-if="isOwner" v-model="form.accept_cash"
               label="Venta en efectivo desde mi panel"
               hint="Registrar ventas en persona sin comprobante." />
@@ -96,6 +96,38 @@
               <input id="cfg-holder" v-model="form.bank_owner" type="text" placeholder="Nombre completo" class="field-control" />
             </div>
           </div>
+        </BaseCard>
+      </section>
+
+      <!-- Cuenta PayPhone para el split -->
+      <section v-if="isSeller" class="settings-section" aria-labelledby="s-payphone">
+        <div>
+          <h2 id="s-payphone" class="settings-title">Cobros con tarjeta (PayPhone)</h2>
+          <p class="settings-desc">Cuando un cliente paga con tarjeta, PayPhone te deposita tu precio completo en esta cuenta. Sin cuenta registrada, tus clientes no ven esta opción.</p>
+        </div>
+        <BaseCard>
+          <div class="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label for="cfg-pp-type" class="field-label">Tipo de cuenta PayPhone</label>
+              <select id="cfg-pp-type" v-model.number="form.payphone_id_type" class="field-control">
+                <option :value="3">PayPhone Business (RUC o cédula)</option>
+                <option :value="4">PayPhone Personal (celular)</option>
+              </select>
+            </div>
+            <div>
+              <label for="cfg-pp-id" class="field-label">{{ form.payphone_id_type === 4 ? 'Celular registrado en PayPhone' : 'RUC o cédula registrada en PayPhone' }}</label>
+              <input id="cfg-pp-id" v-model.trim="form.payphone_identifier" type="text"
+                :inputmode="form.payphone_id_type === 4 ? 'tel' : 'numeric'"
+                :placeholder="form.payphone_id_type === 4 ? '+593 99 123 4567' : '1790012345001'"
+                class="field-control tabular-nums" :aria-invalid="!!payphoneError || undefined" aria-describedby="cfg-pp-hint" />
+            </div>
+          </div>
+          <p id="cfg-pp-hint" class="field-hint mt-3" :class="payphoneError && 'text-bad-700'">
+            {{ payphoneError || (form.payphone_id_type === 4
+              ? 'El mismo número con el que entras a la app PayPhone. Puedes escribirlo como 099 123 4567.'
+              : 'El RUC (13 dígitos) o la cédula (10 dígitos) de tu cuenta PayPhone Business, sin guiones.') }}
+          </p>
+          <p class="field-hint mt-1">Déjalo vacío si no quieres recibir pagos con PayPhone.</p>
         </BaseCard>
       </section>
 
@@ -240,9 +272,22 @@ const defaults = () => ({
   public_listing: true, accept_transfers: true, accept_cards: true, accept_cash: true,
   enforce_hours: false, hours_open: '07:00', hours_close: '19:00', hours_note: '',
   close_sales_minutes_before: 0,
+  // cuenta PayPhone que recibe el split (3 = RUC/cédula, 4 = celular)
+  payphone_id_type: 3, payphone_identifier: '',
 })
 
 const form = ref(defaults())
+
+// Misma regla que la base (panel_settings_payphone_check), con el celular
+// local 09XXXXXXXX aceptado: la base lo guarda como +5939XXXXXXXX.
+const payphoneError = computed(() => {
+  const id = String(form.value.payphone_identifier || '').replace(/[\s-]/g, '')
+  if (!id) return ''
+  if (form.value.payphone_id_type === 4) {
+    return /^(\+5939|09)[0-9]{8}$/.test(id) ? '' : 'Escribe un celular de Ecuador: 09 seguido de 8 dígitos, o +593 9 seguido de 8 dígitos.'
+  }
+  return /^[0-9]{10}([0-9]{3})?$/.test(id) ? '' : 'El RUC tiene 13 dígitos y la cédula 10. Escribe solo números.'
+})
 
 const FIELDS = Object.keys(defaults())
 
@@ -261,9 +306,13 @@ onMounted(async () => {
 })
 
 const save = async () => {
-  saving.value = true
   error.value  = ''
   saved.value  = false
+  if (payphoneError.value) {
+    error.value = 'Revisa tu cuenta PayPhone antes de guardar.'
+    return
+  }
+  saving.value = true
 
   const payload = { ...form.value, user_id: authStore.user?.id, updated_at: new Date().toISOString() }
 
@@ -272,7 +321,9 @@ const save = async () => {
     : await supabase.from('panel_settings').insert(payload)
 
   if (res.error) {
-    error.value = res.error.message
+    error.value = /payphone/i.test(res.error.message)
+      ? 'La cuenta PayPhone no tiene un formato válido.'
+      : res.error.message
   } else {
     exists.value = true
     saved.value  = true
