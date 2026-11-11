@@ -45,7 +45,8 @@
               class="mt-6 bg-orange-50 border border-orange-200 rounded-2xl p-4 flex items-center justify-between gap-4">
               <div>
                 <p class="text-sm text-gray-600">{{ selectedSeats.length }} asiento(s) seleccionado(s)</p>
-                <p class="text-2xl font-extrabold text-gray-900">${{ subtotal }}</p>
+                <p class="text-2xl font-extrabold text-gray-900">${{ total }}</p>
+                <p class="text-xs text-gray-500">${{ money(subtotal) }} + ${{ money(fee) }} de cargo por servicio</p>
               </div>
               <button @click="step = 2"
                 class="bg-orange-600 hover:bg-orange-700 text-white font-bold px-6 py-3 rounded-[10px] transition-all active:scale-95">
@@ -84,9 +85,11 @@
             <div class="bg-gray-50 rounded-xl p-4 text-sm text-gray-600 space-y-1 mt-2">
               <div class="flex justify-between"><span>Tour</span><strong class="text-gray-900">{{ tour.title }}</strong></div>
               <div class="flex justify-between"><span>Asientos</span><strong class="text-gray-900">{{ selectedSeats.join(', ') }}</strong></div>
+              <div class="flex justify-between pt-2 border-t border-gray-200 mt-2"><span>Asientos</span><strong class="text-gray-900">${{ money(subtotal) }}</strong></div>
+              <div class="flex justify-between"><span>Cargo por servicio</span><strong class="text-gray-900">${{ money(fee) }}</strong></div>
               <div class="flex justify-between pt-2 border-t border-gray-200 mt-2">
                 <span class="font-bold text-gray-900">Total</span>
-                <strong class="text-orange-700 text-base">${{ subtotal }}</strong>
+                <strong class="text-orange-700 text-base">${{ total }}</strong>
               </div>
             </div>
 
@@ -137,7 +140,7 @@
                   <p>Cuenta: <strong>{{ bankInfo.account }}</strong></p>
                   <p>Titular: <strong>{{ bankInfo.owner }}</strong></p>
                   <p>Concepto: <strong>chivaspass, {{ tour.title }}</strong></p>
-                  <p>Monto: <strong class="text-orange-700">${{ subtotal }}</strong></p>
+                  <p>Monto a transferir: <strong class="text-orange-700">${{ total }}</strong> <span class="text-xs text-gray-500">(incluye ${{ money(fee) }} de cargo por servicio)</span></p>
                   <p v-if="bankInfo.notes" class="mt-2 text-xs text-gray-500">{{ bankInfo.notes }}</p>
                 </div>
               </div>
@@ -204,8 +207,8 @@
                 </div>
 
                 <div class="bg-gray-50 rounded-xl p-4 text-sm flex items-center justify-between">
-                  <span class="text-gray-600">Total a cobrar</span>
-                  <strong class="text-orange-700 text-base">${{ subtotal }}</strong>
+                  <span class="text-gray-600">Total a cobrar <span class="text-xs text-gray-400">(incluye cargo por servicio)</span></span>
+                  <strong class="text-orange-700 text-base">${{ total }}</strong>
                 </div>
 
                 <p v-if="cardError" class="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3">{{ cardError }}</p>
@@ -213,7 +216,7 @@
                 <div class="flex gap-3 pt-1">
                   <button @click="step = 2" class="btn-secondary flex-1">Volver</button>
                   <button @click="payWithCard" :disabled="charging || !salesOpenNow" class="btn-primary flex-[2] disabled:opacity-50">
-                    {{ charging ? 'Procesando pago...' : `Pagar $${subtotal}` }}
+                    {{ charging ? 'Procesando pago...' : `Pagar $${total}` }}
                   </button>
                 </div>
                 <p class="text-xs text-gray-400 text-center">Pago procesado por Kushki. Los datos de tu tarjeta nunca pasan por nuestros servidores.</p>
@@ -250,7 +253,7 @@
               <div class="flex justify-between text-gray-600"><span>Tour</span><strong class="text-gray-900">{{ tour.title }}</strong></div>
               <div class="flex justify-between text-gray-600"><span>Asientos</span><strong class="text-gray-900">{{ selectedSeats.join(', ') }}</strong></div>
               <div class="flex justify-between text-gray-600"><span>Salida</span><strong class="text-gray-900">{{ formatHour(tour.departure_at) }}</strong></div>
-              <div class="flex justify-between text-gray-600 pt-2 border-t border-gray-100"><span>Total pagado</span><strong class="text-orange-700">${{ subtotal }}</strong></div>
+              <div class="flex justify-between text-gray-600 pt-2 border-t border-gray-100"><span>Total pagado</span><strong class="text-orange-700">${{ paidTotal }}</strong></div>
             </div>
 
             <a :href="whatsAppUrl" target="_blank"
@@ -274,6 +277,7 @@ import QRCode from 'qrcode'
 import { supabase } from '@/lib/supabase'
 import { kushkiEnabled, tokenizeCard } from '@/lib/kushki'
 import { reserveTour, chargeCard, sellerPaymentInfo } from '@/lib/reservations'
+import { platformFee, money } from '@/lib/fees'
 import SeatGrid from '@/components/asientos/SeatGrid.vue'
 import {
   PhX, PhCheck, PhBank, PhCreditCard, PhPaperclip, PhCheckCircle, PhWhatsappLogo,
@@ -350,8 +354,13 @@ const loadSellerSettings = async (ownerId) => {
 }
 
 const subtotal = computed(() =>
-  props.tour ? selectedSeats.value.length * props.tour.base_price : 0
+  props.tour ? selectedSeats.value.length * Number(props.tour.base_price) : 0
 )
+// Cargo por servicio al comprador (el valor definitivo lo calcula el servidor)
+const fee = computed(() => platformFee(subtotal.value))
+const total = computed(() => money(subtotal.value + fee.value))
+const serverTotal = ref(null)
+const paidTotal = computed(() => serverTotal.value != null ? money(serverTotal.value) : total.value)
 
 const whatsAppUrl = computed(() => {
   if (!props.tour) return '#'
@@ -359,7 +368,7 @@ const whatsAppUrl = computed(() => {
     `Mi ticket para ${props.tour.title}`,
     `Salida: ${formatHour(props.tour.departure_at)}`,
     `Asientos: ${selectedSeats.value.join(', ')}`,
-    `Total: $${subtotal.value}`,
+    `Total: $${paidTotal.value}`,
     ticketUrl.value ? `\nVer mi código QR:\n${ticketUrl.value}` : '',
     ``,
     `chivaspass · Baños de Agua Santa`,
@@ -406,6 +415,7 @@ const showResult = async (data) => {
   qrCodeUrl.value    = await QRCode.toDataURL(data.qrPayload, { width: 320, margin: 1 })
   ticketUrl.value    = data.ticketUrl || `${window.location.origin}/ticket/${data.saleId}`
   resultStatus.value = data.status || 'pagado'
+  serverTotal.value = data.total ?? null
   step.value = 4
 }
 
@@ -464,7 +474,7 @@ const payWithCard = async () => {
   charging.value = true
   try {
     // 1. Tokenizar la tarjeta directo con Kushki
-    const token = await tokenizeCard({ name, number, expiry, cvv, amount: subtotal.value })
+    const token = await tokenizeCard({ name, number, expiry, cvv, amount: Number(total.value) })
 
     // 2. Cobrar en el servidor (monto calculado allá, asientos validados allá)
     const data = await chargeCard(supabase, 'tour', token, {

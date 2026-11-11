@@ -1,7 +1,7 @@
 -- Pruebas pgTAP de la lógica crítica de ventas.
 -- Se ejecutan con `supabase test db` (local o CI) sobre las migraciones.
 BEGIN;
-SELECT plan(34);
+SELECT plan(41);
 
 -- ───────────── Datos de prueba ─────────────
 -- Usuarios en auth.users: el trigger handle_new_user crea public.users.
@@ -44,6 +44,11 @@ SELECT lives_ok(
 
 SELECT is((SELECT count(*) FROM public.seats WHERE assigned_chiva_id = '00000000-0000-0000-0000-00000000ee01' AND status = 'reservado'), 2::bigint,
   'Los asientos reservados quedan en estado reservado');
+-- Cargo por servicio al comprador: 8 % + $0,30 sobre $10 = $1,10, redondeado a 5 centavos
+SELECT is(public.platform_fee(10), 1.10::numeric, 'platform_fee(10) = 1,10');
+SELECT is(public.platform_fee(3), 0.55::numeric, 'platform_fee(3) = 0,55 (redondeo a 5 centavos)');
+SELECT is((SELECT platform_fee || '|' || total_charged FROM public.sales_simple WHERE customer_email = 'ana@test.local'), '1.10|11.10',
+  'La venta web guarda el cargo y el total cobrado; el vendedor conserva sus $10');
 
 SELECT throws_like(
   $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[2,3],
@@ -95,6 +100,16 @@ SELECT lives_ok(
   $$ SELECT public.reserve_tour_seats('00000000-0000-0000-0000-00000000ee01', ARRAY[1],
        '{"name":"Eva","email":"eva@test.local"}'::jsonb, NULL, 'pagado', 'efectivo', NULL) $$,
   'El dueño sí vende en efectivo aunque las ventas públicas estén cerradas');
+-- Saldo del dueño: la venta de Ana se confirmó y luego se canceló (neto 0);
+-- la venta en efectivo debe quedar registrada por el trigger.
+SELECT is((SELECT count(*) FROM public.owner_balance WHERE owner_id = '00000000-0000-0000-0000-00000000aa05'), 1::bigint,
+  'Solo la venta en efectivo queda en el saldo; la cancelada se revirtió');
+SELECT is((SELECT monto_total FROM public.owner_balance WHERE owner_id = '00000000-0000-0000-0000-00000000aa05'), 5::numeric,
+  'El saldo registra el monto de la venta en efectivo');
+SELECT is((SELECT payment_method FROM public.owner_balance WHERE owner_id = '00000000-0000-0000-0000-00000000aa05'), 'efectivo',
+  'El saldo guarda el método de pago');
+SELECT is((SELECT platform_fee FROM public.sales_simple WHERE customer_email = 'eva@test.local'), 0::numeric,
+  'La venta en efectivo del dueño no lleva cargo por servicio');
 UPDATE public.assigned_chivas SET sales_open = true WHERE id = '00000000-0000-0000-0000-00000000ee01';
 
 INSERT INTO public.panel_settings (user_id, accept_transfers) VALUES ('00000000-0000-0000-0000-00000000aa05', false);
