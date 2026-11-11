@@ -245,3 +245,24 @@ la migración nueva):
    `monto_owner` / `monto_agencia`). `kushki-charge` y `payphone-prepare`
    no cambian: el parámetro nuevo tiene valor por defecto.
 3. `npm run deploy` (pantalla "Vender boletos" con "Tu precio").
+
+# Borrado de comprobantes a los 90 días (nov 2026)
+
+Cumple la política de privacidad: la imagen del comprobante se borra 90 días
+después de la salida o del evento (`app_settings.proof_retention_days`), y
+los archivos subidos que ninguna reserva usa, a los 2 días
+(`orphan_proof_grace_days`). La venta, el número y los montos se conservan;
+las reservas quedan con `comprobante_purged_at` / `payment_proof_purged_at`.
+
+Orden:
+1. Migración `20261111000003_purga_comprobantes.sql` (activa pg_net y
+   programa `chivapass_purge_proofs` a las 04:41 UTC).
+2. Desplegar `purge-proofs` con `verify_jwt = false` (la llama pg_cron sin
+   credenciales; solo borra lo que `proofs_to_purge()` marcó como vencido y
+   tiene un límite de 3 ejecuciones por hora).
+3. Probar sin borrar: `POST /functions/v1/purge-proofs {"dryRun": true}`.
+4. `npm run deploy` (los paneles muestran "Comprobante borrado").
+
+Revisar ejecuciones: `select * from cron.job_run_details where jobid =
+(select jobid from cron.job where jobname = 'chivapass_purge_proofs') order by
+start_time desc limit 5;` y la respuesta HTTP en `net._http_response`.

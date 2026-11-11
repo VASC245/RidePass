@@ -47,7 +47,8 @@
               class="text-xs px-2.5 py-1 rounded-full bg-gray-200 text-gray-600 font-semibold"
             >Usado</span>
             <!-- Comprobante -->
-            <button v-if="tk.payment_proof_path || tk.payment_proof_url" @click="openProof(tk)" class="text-xs text-orange-600 hover:underline font-semibold">Ver comprobante</button>
+            <span v-if="tk.payment_proof_purged_at" class="text-xs text-gray-500" title="Se borra a los 90 días del evento, como dice la política de privacidad">Comprobante borrado</span>
+            <button v-else-if="tk.payment_proof_path || tk.payment_proof_url" @click="openProof(tk)" class="text-xs text-orange-600 hover:underline font-semibold">Ver comprobante</button>
           </div>
         </div>
 

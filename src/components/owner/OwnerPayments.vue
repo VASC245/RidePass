@@ -46,7 +46,7 @@
                 :src="thumbs[pago.id]" alt="" class="size-full object-cover" loading="lazy" />
               <span v-else class="flex flex-col items-center gap-1 text-xs font-medium">
                 <PhFileText :size="24" />
-                {{ isPdf(pago) ? 'PDF' : 'Ver' }}
+                {{ pago.comprobante_purged_at ? 'Borrado' : isPdf(pago) ? 'PDF' : 'Ver' }}
               </span>
             </button>
 
@@ -103,7 +103,10 @@
           <div class="grid flex-1 gap-5 overflow-y-auto p-5 md:grid-cols-[1.2fr_1fr]">
             <!-- Imagen -->
             <div class="flex min-h-48 items-center justify-center rounded-lg border border-gray-200 bg-gray-50 p-2">
-              <p v-if="!proofUrl" class="text-sm text-gray-600">Cargando comprobante…</p>
+              <p v-if="selectedPago.comprobante_purged_at" class="max-w-[36ch] text-center text-sm text-gray-600">
+                La imagen del comprobante se borró a los 90 días de la salida, como dice la política de privacidad. El número y los montos se conservan.
+              </p>
+              <p v-else-if="!proofUrl" class="text-sm text-gray-600">Cargando comprobante…</p>
               <a v-else-if="isImage(selectedPago.comprobante_path || selectedPago.comprobante_url)"
                 :href="proofUrl" target="_blank" rel="noopener" class="block" title="Abrir en tamaño completo">
                 <img :src="proofUrl" alt="Comprobante de transferencia" class="mx-auto max-h-[50dvh] rounded-md object-contain" />
@@ -227,6 +230,7 @@ const openModal = async (pago) => {
   proofUrl.value = thumbs.value[pago.id] || "";
   feedback.value = "";
   confirmReject.value = false;
+  if (pago.comprobante_purged_at) return;
   if (!proofUrl.value && pago.comprobante_path) {
     const { data } = await supabase.storage
       .from("comprobantes")
@@ -245,7 +249,7 @@ const closeModal = () => {
 
 // Miniaturas: una sola llamada firmada para todos los comprobantes con ruta
 const loadThumbs = async () => {
-  const withPath = comprobantes.value.filter((p) => p.comprobante_path);
+  const withPath = comprobantes.value.filter((p) => p.comprobante_path && !p.comprobante_purged_at);
   const map = {};
   if (withPath.length) {
     const { data } = await supabase.storage
@@ -254,7 +258,7 @@ const loadThumbs = async () => {
     (data ?? []).forEach((d, i) => { if (d?.signedUrl) map[withPath[i].id] = d.signedUrl; });
   }
   comprobantes.value.forEach((p) => {
-    if (!map[p.id] && p.comprobante_url?.startsWith("http")) map[p.id] = p.comprobante_url;
+    if (!map[p.id] && !p.comprobante_purged_at && p.comprobante_url?.startsWith("http")) map[p.id] = p.comprobante_url;
   });
   thumbs.value = map;
 };
