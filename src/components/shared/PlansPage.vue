@@ -98,11 +98,11 @@
             <p v-if="hasBank" class="mt-1 max-w-[60ch] text-sm leading-relaxed text-gray-700">
               Haz la transferencia con estos datos y envíanos el comprobante<template v-if="bank.whatsapp"> por WhatsApp al
               <strong class="font-semibold text-gray-900 tabular-nums">{{ bank.whatsapp }}</strong></template><template v-else>
-              desde la <RouterLink to="/contacto" class="font-semibold text-brand-700 underline underline-offset-2">página de contacto</RouterLink></template>.
+              desde la <RouterLink to="/contacto?motivo=pago" class="font-semibold text-brand-700 underline underline-offset-2">página de contacto</RouterLink></template>.
               Activamos tu plan en menos de 24 horas.
             </p>
             <p v-else class="mt-1 max-w-[60ch] text-sm leading-relaxed text-gray-700">
-              Escríbenos desde la <RouterLink to="/contacto" class="font-semibold text-brand-700 underline underline-offset-2">página de contacto</RouterLink>
+              Escríbenos desde la <RouterLink to="/contacto?motivo=pago" class="font-semibold text-brand-700 underline underline-offset-2">página de contacto</RouterLink>
               con el plan que elegiste y te enviamos los datos para la transferencia. Activamos tu plan en menos de 24 horas desde tu pago.
             </p>
             <p v-if="plan?.status === 'activo' && plan?.expires_at" class="mt-3 text-sm text-gray-600">

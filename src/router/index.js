@@ -31,6 +31,10 @@ const routes = [
       { path: "como-funciona", name: "ComoFunciona", component: lazy(() => import("@/components/public/HowItWorksPage.vue")) },
       { path: "contacto",      name: "Contacto",     component: lazy(() => import("@/components/public/ContactPage.vue")) },
       { path: "ticket/:id",    name: "PublicTicket", component: lazy(() => import("@/components/public/PublicTicket.vue")) },
+      { path: "terminos",      name: "Terminos",     component: lazy(() => import("@/components/public/legal/TermsPage.vue")) },
+      { path: "privacidad",    name: "Privacidad",   component: lazy(() => import("@/components/public/legal/PrivacyPage.vue")) },
+      { path: "creditos",      name: "Creditos",     component: lazy(() => import("@/components/public/legal/CreditsPage.vue")) },
+      { path: ":pathMatch(.*)*", name: "NotFound",   component: lazy(() => import("@/components/public/NotFoundPage.vue")) },
     ],
   },
 
@@ -92,7 +96,6 @@ const routes = [
     ],
   },
 
-  { path: "/:pathMatch(.*)*", redirect: "/" },
 ];
 
 const router = createRouter({
@@ -139,6 +142,26 @@ router.beforeEach(async (to) => {
   }
 
   return true;
+});
+
+// Tras un deploy, una pestaña abierta pide chunks que ya no existen y la
+// navegación queda en blanco. Se recarga una vez hacia la ruta pedida.
+const CHUNK_RELOAD_KEY = "chivaspass:chunk-reload";
+const isChunkError = (err) =>
+  /Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module|Unable to preload CSS/i
+    .test(String(err?.message ?? err));
+
+router.onError((err, to) => {
+  if (!isChunkError(err)) return;
+  try {
+    if (sessionStorage.getItem(CHUNK_RELOAD_KEY) === to.fullPath) return;
+    sessionStorage.setItem(CHUNK_RELOAD_KEY, to.fullPath);
+  } catch { /* sin sessionStorage: recargar igual */ }
+  window.location.assign(to.fullPath);
+});
+
+router.afterEach(() => {
+  try { sessionStorage.removeItem(CHUNK_RELOAD_KEY); } catch { /* sin sessionStorage */ }
 });
 
 export default router;

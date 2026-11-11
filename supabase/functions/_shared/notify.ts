@@ -104,8 +104,13 @@ export function ticketEmail(t: TicketInfo): { subject: string; html: string } {
 }
 
 const BREVO_API = "https://api.brevo.com/v3"
+// Si Brevo tarda, la venta ya está hecha: no dejar al comprador esperando.
+const BREVO_TIMEOUT_MS = 8000
 
-export async function sendEmail(to: string, subject: string, html: string, toName = ""): Promise<boolean> {
+export async function sendEmail(
+  to: string, subject: string, html: string, toName = "",
+  opts: { replyTo?: string; tag?: string } = {},
+): Promise<boolean> {
   const key   = Deno.env.get("BREVO_API_KEY")
   const email = Deno.env.get("BREVO_SENDER_EMAIL")
   const name  = Deno.env.get("BREVO_SENDER_NAME") ?? "chivaspass"
@@ -117,10 +122,12 @@ export async function sendEmail(to: string, subject: string, html: string, toNam
       body: JSON.stringify({
         sender: { name, email },
         to: [toName ? { email: to, name: toName } : { email: to }],
+        ...(opts.replyTo ? { replyTo: { email: opts.replyTo } } : {}),
         subject,
         htmlContent: html,
-        tags: ["ticket"],
+        tags: [opts.tag ?? "ticket"],
       }),
+      signal: AbortSignal.timeout(BREVO_TIMEOUT_MS),
     })
     if (!res.ok) console.error("[notify] Brevo email error:", res.status, await res.text())
     return res.ok
@@ -147,12 +154,13 @@ export async function sendSms(phone: string, content: string): Promise<boolean> 
   const sender = (Deno.env.get("BREVO_SMS_SENDER") ?? "chivaspass").replace(/[^A-Za-z0-9]/g, "").slice(0, 11)
   if (!key) { console.warn("[notify] Brevo sin BREVO_API_KEY; SMS omitido"); return false }
   const recipient = normalizePhone(phone)
-  if (!recipient) { console.warn("[notify] teléfono inválido para SMS:", phone); return false }
+  if (!recipient) { console.warn("[notify] teléfono inválido para SMS"); return false }
   try {
     const res = await fetch(`${BREVO_API}/transactionalSMS/send`, {
       method: "POST",
       headers: { "api-key": key, "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify({ sender, recipient, content, type: "transactional", tag: "venta" }),
+      signal: AbortSignal.timeout(BREVO_TIMEOUT_MS),
     })
     if (!res.ok) console.error("[notify] Brevo SMS error:", res.status, await res.text())
     return res.ok

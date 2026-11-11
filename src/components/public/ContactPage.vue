@@ -26,7 +26,7 @@
           </h1>
 
           <p class="contact-sub">
-            La plataforma líder para gestionar y vender entradas en Baños.
+            La plataforma para gestionar y vender entradas en Baños.
             Tours en chiva, atracciones turísticas y mucho más —
             todo desde un solo panel.
           </p>
@@ -44,21 +44,6 @@
             <div class="contact-stat">
               <div class="stat-num">24/7</div>
               <div class="stat-label">Disponible siempre</div>
-            </div>
-          </div>
-
-          <!-- Testimonial — oculto en móvil -->
-          <div class="contact-testimonial">
-            <p class="t-text">
-              "Con chivaspass vendemos más boletos en línea sin filas
-              ni complicaciones. Nuestros clientes reciben su QR al instante."
-            </p>
-            <div class="flex items-center gap-3 mt-3">
-              <div class="t-avatar">CM</div>
-              <div>
-                <p class="t-name">Carlos Mora</p>
-                <p class="t-role">Dueño de Chiva · Baños, Ecuador</p>
-              </div>
             </div>
           </div>
 
@@ -106,10 +91,10 @@
                   <label>País <span class="req">*</span></label>
                   <select v-model="f.pais" :class="{'field-error': errors.pais}" @change="errors.pais=false">
                     <option value="" disabled>Selecciona...</option>
-                    <option value="ec">🇪🇨 Ecuador</option>
-                    <option value="co">🇨🇴 Colombia</option>
-                    <option value="pe">🇵🇪 Perú</option>
-                    <option value="bo">🇧🇴 Bolivia</option>
+                    <option value="ec">Ecuador</option>
+                    <option value="co">Colombia</option>
+                    <option value="pe">Perú</option>
+                    <option value="bo">Bolivia</option>
                     <option value="otro">Otro</option>
                   </select>
                 </div>
@@ -130,11 +115,11 @@
                   <label>Tipo de negocio <span class="req">*</span></label>
                   <select v-model="f.tipo" :class="{'field-error': errors.tipo}" @change="errors.tipo=false">
                     <option value="" disabled>Selecciona...</option>
-                    <option value="chiva">🚍 Dueño de Chiva</option>
-                    <option value="atraccion">🏔️ Atracción Turística</option>
-                    <option value="agencia">🏢 Agencia de Viajes</option>
-                    <option value="restaurante">🍽️ Restaurante</option>
-                    <option value="otro">🎯 Otro</option>
+                    <option value="chiva">Dueño de chiva</option>
+                    <option value="atraccion">Atracción turística</option>
+                    <option value="agencia">Agencia de viajes</option>
+                    <option value="restaurante">Restaurante</option>
+                    <option value="otro">Otro</option>
                   </select>
                 </div>
 
@@ -144,6 +129,7 @@
                     <option value="" disabled>Selecciona...</option>
                     <option value="registro">Quiero registrar mi negocio</option>
                     <option value="planes">Tengo dudas sobre los planes y precios</option>
+                    <option value="pago">Quiero pagar mi plan o estado de cuenta</option>
                     <option value="demo">Me gustaría ver una demo</option>
                     <option value="soporte">Necesito soporte técnico</option>
                     <option value="integracion">Quiero integrar pagos con tarjeta</option>
@@ -152,6 +138,15 @@
                 </div>
 
               </div>
+
+              <div class="field" style="margin-top:1rem">
+                <label>Mensaje <span style="color:#9CA3AF;font-weight:400">(opcional)</span></label>
+                <textarea v-model="f.mensaje" rows="3" maxlength="2000" placeholder="Cuéntanos lo que necesites"></textarea>
+              </div>
+
+              <TurnstileWidget ref="captcha" v-model="captchaToken" style="margin-top:1rem" />
+
+              <p v-if="submitError" class="submit-error">{{ submitError }}</p>
 
               <div class="form-divider">Información procesada de forma segura</div>
 
@@ -162,14 +157,14 @@
 
               <p class="form-note">
                 Al enviar, aceptas que chivaspass te contacte con información sobre la plataforma.
-                Nunca compartimos tus datos con terceros.
+                Tratamos tus datos según nuestra <RouterLink to="/privacidad" style="text-decoration:underline">política de privacidad</RouterLink>.
               </p>
             </form>
           </div>
 
           <!-- Estado de éxito -->
           <div v-else class="success-state">
-            <div class="success-icon">✅</div>
+            <div class="success-icon"><PhCheck :size="30" weight="bold" /></div>
             <h3 class="success-title">¡Mensaje enviado!</h3>
             <p class="success-msg">
               Gracias por contactarnos. Nuestro equipo revisará tu solicitud
@@ -186,14 +181,21 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { PhCheck } from '@phosphor-icons/vue'
+import { supabase } from '@/lib/supabase'
+import TurnstileWidget from '@/components/ui/TurnstileWidget.vue'
 
 const sent    = ref(false)
 const loading = ref(false)
+const submitError  = ref('')
+const captcha      = ref(null)
+const captchaToken = ref('')
 
 const f = reactive({
   nombre: '', apellidos: '', email: '', phone: '',
-  negocio: '', pais: '', tours: '', tipo: '', motivo: '',
+  negocio: '', pais: '', tours: '', tipo: '', motivo: '', mensaje: '',
 })
 
 const errors = reactive({
@@ -208,11 +210,37 @@ const submitForm = async () => {
   }
   if (!valid) return
 
+  if (captcha.value?.enabled && !captchaToken.value) {
+    submitError.value = 'Espera a que termine la verificación de seguridad e intenta de nuevo.'
+    return
+  }
+
   loading.value = true
-  await new Promise(r => setTimeout(r, 1200))
-  loading.value = false
-  sent.value = true
+  submitError.value = ''
+  try {
+    const { data, error } = await supabase.functions.invoke('contact', {
+      body: { ...f, turnstileToken: captchaToken.value },
+    })
+    let message = data?.message
+    if (error) {
+      try { message = (await error.context?.json?.())?.message } catch { /* sin cuerpo JSON */ }
+    }
+    if (error || !data?.success) throw new Error(message || 'No pudimos enviar tu mensaje. Intenta de nuevo.')
+    sent.value = true
+  } catch (e) {
+    submitError.value = e.message
+    captcha.value?.reset()
+  } finally {
+    loading.value = false
+  }
 }
+
+// /contacto?motivo=pago llega desde Planes y Estado de cuenta
+const route = useRoute()
+onMounted(() => {
+  const motivo = String(route.query.motivo ?? '')
+  if (['registro', 'planes', 'pago', 'demo', 'soporte'].includes(motivo)) f.motivo = motivo
+})
 </script>
 
 <style scoped>
@@ -295,23 +323,6 @@ const submitForm = async () => {
   color: rgba(255,255,255,.85);
   letter-spacing: 0.05em; text-transform: uppercase; margin-top: 2px;
 }
-.contact-testimonial {
-  margin-top: 3rem;
-  background: rgba(0,0,0,.14);
-  border: 1px solid rgba(255,255,255,.2);
-  border-radius: 16px;
-  padding: 1.25rem 1.5rem;
-  backdrop-filter: blur(4px);
-}
-.t-text { font-size: 0.875rem; color: #fff; line-height: 1.6; font-style: italic; margin: 0; }
-.t-avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: rgba(255,255,255,.25);
-  display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: #fff;
-  flex-shrink: 0;
-}
-.t-name { font-size: 0.82rem; font-weight: 600; color: #fff; margin: 0; }
-.t-role { font-size: 0.72rem; color: rgba(255,255,255,.8); margin: 0; }
 
 /* ── RIGHT ── */
 .panel-right {
@@ -336,7 +347,8 @@ const submitForm = async () => {
 .field label { font-size: 0.78rem; font-weight: 600; color: #374151; }
 .req { color: #EA580C; margin-left: 2px; }
 .field input,
-.field select {
+.field select,
+.field textarea {
   font-family: 'DM Sans', sans-serif;
   font-size: 0.875rem;
   color: #111827;
@@ -357,11 +369,14 @@ const submitForm = async () => {
   padding-right: 36px;
 }
 .field input:focus,
-.field select:focus {
+.field select:focus,
+.field textarea:focus {
   border-color: #EA580C;
   background: #fff;
   box-shadow: 0 0 0 3px rgba(234,88,12,.12);
 }
+.field textarea { resize: vertical; min-height: 84px; }
+.submit-error { margin-top: 1rem; font-size: 0.85rem; color: #B91C1C; background: #FEF2F2; border: 1px solid #FEE2E2; border-radius: 10px; padding: 10px 14px; }
 .field-error { border-color: #EF4444 !important; box-shadow: 0 0 0 3px rgba(239,68,68,.12) !important; }
 .form-divider {
   margin: 1.5rem 0 1rem;
@@ -394,7 +409,7 @@ const submitForm = async () => {
 
 /* Success */
 .success-state { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2rem 1rem; gap: 1rem; }
-.success-icon { width: 64px; height: 64px; background: #DCFCE7; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+.success-icon { width: 64px; height: 64px; background: #FFF1E0; color: #C2410C; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
 .success-title { font-size: 1.25rem; font-weight: 700; color: #111827; }
 .success-msg { font-size: 0.875rem; color: #6B7280; line-height: 1.6; max-width: 320px; }
 .success-cta {
@@ -411,7 +426,6 @@ const submitForm = async () => {
   .panel-left { padding: 3rem 1.5rem 2.5rem; }
   .contact-headline { font-size: clamp(2.5rem, 10vw, 4rem); }
   .contact-stats { gap: 1.25rem; }
-  .contact-testimonial { display: none; }
   .panel-right { padding: 2rem 1rem; }
   .form-card { max-width: 100%; }
 }

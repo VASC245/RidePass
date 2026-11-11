@@ -54,17 +54,18 @@ export const useAuthStore = defineStore("auth", {
       if (data.user) await this.loadUserProfile(data.user.id);
     },
 
-    // ownerCode: código de invitación requerido para registrarse como dueño
+    // inviteCode: código de invitación requerido para dueño, agencia y negocio
     // (lo valida el trigger handle_new_user en la base de datos).
-    async register(fullName, email, password, role, ownerCode = "") {
+    async register(fullName, email, password, role, inviteCode = "") {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          emailRedirectTo: `${window.location.origin}${role === "cliente" ? "/cuenta/login" : "/panel/login"}`,
           data: {
             full_name: fullName,
-            role: role || "agencia",
-            ...(ownerCode ? { owner_code: ownerCode } : {}),
+            role: role || "cliente",
+            ...(inviteCode ? { invite_code: inviteCode } : {}),
           },
         },
       });

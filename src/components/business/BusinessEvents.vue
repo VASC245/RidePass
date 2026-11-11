@@ -7,6 +7,8 @@
       </button>
     </div>
 
+    <div v-if="listError" role="alert" class="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ listError }}</div>
+
     <!-- Lista -->
     <div v-if="loading" class="text-center py-12 text-gray-400">Cargando eventos...</div>
     <div v-else-if="events.length === 0" class="text-center py-12 text-gray-400">No tienes eventos aún.</div>
@@ -58,7 +60,7 @@
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="label">Precio ($) *</label>
-            <input v-model.number="form.price" type="number" min="0" step="0.01" class="input-field" />
+            <input v-model.number="form.price" type="number" min="0.50" max="1000" step="0.01" class="input-field" placeholder="Ej.: 25.00" />
           </div>
           <div>
             <label class="label">Capacidad *</label>
@@ -112,9 +114,13 @@ const events = ref([])
 const showModal = ref(false)
 const editing = ref(null)
 const formError = ref('')
+const listError = ref('')
+
+const PRICE_MIN = 0.5
+const PRICE_MAX = 1000
 const businessId = ref(null)
 
-const emptyForm = () => ({ title: '', description: '', price: 0, capacity: 50, event_date: '', duration_minutes: null, status: 'activo' })
+const emptyForm = () => ({ title: '', description: '', price: null, capacity: 50, event_date: '', duration_minutes: null, status: 'activo' })
 const form = ref(emptyForm())
 
 const formatDate = (d) => new Date(d).toLocaleDateString('es-EC', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
@@ -159,6 +165,15 @@ const openEdit = (ev) => {
 const save = async () => {
   if (!form.value.title || !form.value.event_date) { formError.value = 'Título y fecha son obligatorios'; return }
   if (!businessId.value) { formError.value = 'Primero configura tu perfil de negocio'; return }
+  const price = Number(form.value.price)
+  if (form.value.price === null || form.value.price === '' || !Number.isFinite(price) || price < PRICE_MIN || price > PRICE_MAX) {
+    formError.value = 'El precio debe estar entre $0,50 y $1000.'
+    return
+  }
+  if (Math.abs(price * 100 - Math.round(price * 100)) > 1e-6) {
+    formError.value = 'El precio admite como máximo 2 decimales.'
+    return
+  }
   saving.value = true
   formError.value = ''
 
@@ -168,13 +183,27 @@ const save = async () => {
     ? await supabase.from('business_events').update(payload).eq('id', editing.value)
     : await supabase.from('business_events').insert(payload)
 
-  if (res.error) { formError.value = res.error.message } else { showModal.value = false; await fetchEvents() }
+  if (res.error) {
+    console.error('Error al guardar evento:', res.error)
+    formError.value = res.error.code === '23514'
+      ? 'Revisa los datos: el precio debe estar entre $0,50 y $1000 con máximo 2 decimales.'
+      : res.error.code === 'P0001' ? res.error.message : 'No se pudo guardar el evento. Intenta de nuevo.'
+  } else { showModal.value = false; await fetchEvents() }
   saving.value = false
 }
 
 const deleteEvent = async (id) => {
-  if (!confirm('¿Eliminar este evento? Se borrarán también sus tickets.')) return
-  await supabase.from('business_events').delete().eq('id', id)
+  if (!confirm('¿Eliminar este evento? Solo se puede eliminar si aún no tiene entradas vendidas.')) return
+  listError.value = ''
+  const { error } = await supabase.from('business_events').delete().eq('id', id)
+  if (error) {
+    console.error('Error al eliminar evento:', error)
+    // 23503: el evento tiene entradas asociadas (llave foránea).
+    listError.value = error.code === '23503'
+      ? 'No se puede eliminar: el evento ya tiene entradas vendidas. Edítalo y márcalo como cancelado.'
+      : 'No se pudo eliminar el evento. Intenta de nuevo.'
+    return
+  }
   await fetchEvents()
 }
 </script>

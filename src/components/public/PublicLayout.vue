@@ -119,6 +119,12 @@
       </div>
       <div class="max-w-7xl mx-auto border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-600">
         <p>© 2026 chivaspass. Baños de Agua Santa, Ecuador.</p>
+        <nav aria-label="Legal" class="flex flex-wrap justify-center gap-x-5 gap-y-1">
+          <RouterLink to="/terminos" class="footer-link">Términos</RouterLink>
+          <RouterLink to="/privacidad" class="footer-link">Privacidad</RouterLink>
+          <RouterLink to="/terminos#reembolsos" class="footer-link">Reembolsos</RouterLink>
+          <RouterLink to="/creditos" class="footer-link">Créditos</RouterLink>
+        </nav>
         <p>Turismo local, venta directa.</p>
       </div>
     </footer>

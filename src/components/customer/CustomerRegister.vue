@@ -23,7 +23,7 @@
 
         <div v-if="error" class="bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">{{ error }}</div>
         <div v-if="success" class="bg-green-50 border border-green-200 text-green-700 text-sm rounded-xl px-4 py-3 font-semibold">
-          Cuenta creada. Ahora puedes iniciar sesión.
+          {{ needsConfirm ? `Te enviamos un correo a ${email}. Abre el enlace para confirmar tu cuenta y luego inicia sesión.` : 'Cuenta creada. Ahora puedes iniciar sesión.' }}
         </div>
 
         <button type="submit" :disabled="loading"
@@ -50,6 +50,7 @@ const email    = ref('')
 const password = ref('')
 const error    = ref('')
 const success  = ref(false)
+const needsConfirm = ref(false)
 const loading  = ref(false)
 const router   = useRouter()
 const auth     = useAuthStore()
@@ -60,9 +61,11 @@ const register = async () => {
   if (password.value.length < 6) { error.value = 'La contraseña debe tener al menos 6 caracteres.'; return }
   loading.value = true
   try {
-    await auth.register(fullName.value, email.value, password.value, 'cliente')
+    const data = await auth.register(fullName.value, email.value, password.value, 'cliente')
     success.value = true
-    setTimeout(() => router.push('/cuenta/login'), 1500)
+    // Con confirmación de correo activa no hay sesión hasta abrir el enlace
+    needsConfirm.value = !data?.session
+    if (!needsConfirm.value) setTimeout(() => router.push('/cuenta/login'), 1500)
   } catch (e) {
     error.value = e.message ?? 'Error al crear la cuenta.'
   }

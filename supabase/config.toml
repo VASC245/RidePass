@@ -46,6 +46,10 @@ verify_jwt = true
 [functions.kushki-charge]
 verify_jwt = true
 
+# Formulario de contacto del sitio público (correo vía Brevo).
+[functions.contact]
+verify_jwt = true
+
 # Retirada: responde 410. Eliminar con `npx supabase functions delete send-ticket`.
 [functions.send-ticket]
 verify_jwt = true

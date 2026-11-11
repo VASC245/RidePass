@@ -1,17 +1,15 @@
 // Utilidades HTTP compartidas por las edge functions.
 
 // Orígenes por defecto si el secret ALLOWED_ORIGINS no está configurado:
-// el dominio en Cloudflare, el sitio de Netlify mientras dure la migración
-// y el dev server local. Nunca se refleja un origen arbitrario.
+// el dominio en Cloudflare y el dev server local. Nunca se refleja un
+// origen arbitrario.
 //   supabase secrets set ALLOWED_ORIGINS=https://chivaspass.com,https://www.chivaspass.com
 const DEFAULT_ORIGINS = [
   "https://chivaspass.com",
   "https://www.chivaspass.com",
   "https://chivaspass.valentinsil13.workers.dev", // URL de Cloudflare hasta conectar el dominio
-  "https://chivaspass.netlify.app", // retirar cuando el dominio apunte a Cloudflare
   "http://localhost:5173",
 ]
-const PREVIEW_RE = /^https:\/\/[a-z0-9-]+--chivaspass\.netlify\.app$/
 // Dev server local en cualquier puerto: Vite salta a 5174, 5175... cuando
 // el 5173 está ocupado, y sin esto el navegador bloquea el preflight.
 const LOCAL_RE = /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/
@@ -23,7 +21,7 @@ const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "")
 const ORIGINS = ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : DEFAULT_ORIGINS
 
 export function originAllowed(origin: string): boolean {
-  return ORIGINS.includes(origin) || PREVIEW_RE.test(origin) || LOCAL_RE.test(origin)
+  return ORIGINS.includes(origin) || LOCAL_RE.test(origin)
 }
 
 // Devuelve las cabeceras CORS para la petición.
@@ -44,12 +42,14 @@ export const jsonResponse = (cors: Record<string, string>) =>
     new Response(JSON.stringify(body), { status, headers: cors })
 
 // URL pública de la app para armar links de tickets. Prioridad:
-// PUBLIC_APP_URL (secret) → cabecera Origin de la petición.
+// PUBLIC_APP_URL (secret) → cabecera Origin, solo si es un origen permitido.
+// Sin ese filtro, cualquiera podía hacer que nuestros correos enlazaran a
+// su propio dominio con solo cambiar la cabecera.
 export function appUrl(req: Request): string {
   const env = Deno.env.get("PUBLIC_APP_URL")
   if (env) return env.replace(/\/$/, "")
-  const origin = req.headers.get("origin")
-  return origin ? origin.replace(/\/$/, "") : ""
+  const origin = req.headers.get("origin") ?? ""
+  return originAllowed(origin) && !LOCAL_RE.test(origin) ? origin.replace(/\/$/, "") : ""
 }
 
 // Traduce los códigos que lanzan las funciones SQL a mensajes para el usuario.
@@ -63,6 +63,8 @@ export function mapDbError(message: string): { status: number; message: string }
   if (m.includes("TOUR_WITHOUT_PRICE")) return { status: 400, message: "El tour no tiene precio configurado." }
   if (m.includes("EVENT_INACTIVE"))     return { status: 400, message: "Este evento ya no está activo." }
   if (m.includes("EVENT_PAST"))         return { status: 400, message: "Este evento ya pasó." }
+  if (m.includes("TRANSFER_CLOSED"))    return { status: 409, message: "Las transferencias para esta salida ya cerraron porque falta menos de una hora. Puedes comprar directamente con el vendedor." }
+  if (m.includes("INVALID_TRANSITION")) return { status: 409, message: "Esta entrada ya fue procesada." }
   if (m.includes("SALES_CLOSED"))       return { status: 409, message: "Las ventas para esta salida están cerradas por el momento." }
   if (m.includes("OUTSIDE_HOURS"))      return { status: 409, message: "El vendedor no recibe reservas a esta hora. Revisa su horario de atención." }
   if (m.includes("AGENCY_DISABLED"))    return { status: 403, message: "Este tour no admite ventas por agencias." }
@@ -75,7 +77,9 @@ export function mapDbError(message: string): { status: number; message: string }
   return { status: 500, message: "No se pudo registrar la reserva." }
 }
 
-// IP del cliente detrás del proxy de Supabase.
+// IP del cliente detrás del proxy de Supabase. El gateway de Supabase
+// reemplaza X-Forwarded-For con la IP real (comprobado el 26 oct 2026
+// enviando una cabecera falsa), así que el primer valor es confiable.
 export function clientIp(req: Request): string {
   const fwd = req.headers.get("x-forwarded-for") ?? ""
   return fwd.split(",")[0].trim() || req.headers.get("cf-connecting-ip") || "unknown"
@@ -127,9 +131,34 @@ export function parseCustomer(raw: unknown, requireAddress = false): Customer | 
   return customer
 }
 
-export function parseSeats(raw: unknown): number[] | null {
-  if (!Array.isArray(raw) || raw.length === 0 || raw.length > 60) return null
+export function parseSeats(raw: unknown, max = 60): number[] | null {
+  if (!Array.isArray(raw) || raw.length === 0 || raw.length > max) return null
   const seats = raw.map(Number)
   if (seats.some((n) => !Number.isInteger(n) || n < 1 || n > 200)) return null
   return [...new Set(seats)]
+}
+
+// Cloudflare Turnstile (captcha invisible). Si el secret no está
+// configurado no se exige, para no romper las ventas mientras se activa.
+//   supabase secrets set TURNSTILE_SECRET_KEY=0x...
+export async function verifyTurnstile(req: Request, token: unknown): Promise<boolean> {
+  const secret = Deno.env.get("TURNSTILE_SECRET_KEY")
+  if (!secret) return true
+  if (typeof token !== "string" || !token || token.length > 2048) return false
+  try {
+    const form = new FormData()
+    form.append("secret", secret)
+    form.append("response", token)
+    form.append("remoteip", clientIp(req))
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      body: form,
+      signal: AbortSignal.timeout(8000),
+    })
+    const body = await res.json().catch(() => ({}))
+    return Boolean(body?.success)
+  } catch (e) {
+    console.warn("[turnstile] verificación fallida:", (e as Error).message)
+    return false
+  }
 }

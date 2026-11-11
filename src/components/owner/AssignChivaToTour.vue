@@ -220,7 +220,8 @@ const saveSalida = async () => {
 
   if (res.error) {
     console.error("salida:", res.error.message);
-    formError.value = "No se pudo guardar la salida.";
+    // P0001: regla de negocio con mensaje legible (p. ej. salida con ventas).
+    formError.value = res.error.code === "P0001" ? res.error.message : "No se pudo guardar la salida.";
     return;
   }
   cancelEdit();
