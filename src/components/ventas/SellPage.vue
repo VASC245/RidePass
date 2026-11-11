@@ -28,6 +28,8 @@
             :selectedTour="selectedTour"
             :selectedSeats="selectedSeats"
             :total="subtotal"
+            :agencyPrice="unitPrice"
+            :ownerTotal="ownerTotal"
             @purchaseConfirmed="resetForm"
           />
         </template>
@@ -84,6 +86,30 @@
               @selectSeats="updateSeats"
             />
           </BaseCard>
+
+          <!-- Paso 2b: precio de la agencia -->
+          <BaseCard v-if="selectedTour">
+            <template #title>Tu precio</template>
+            <div class="grid gap-4 sm:grid-cols-[13rem_minmax(0,1fr)] sm:items-start">
+              <BaseInput name="agencyPrice" label="Cobras por asiento (USD)" v-model.trim="priceInput"
+                type="text" inputmode="decimal" autocomplete="off" :error="priceError" />
+              <dl class="space-y-1.5 text-sm sm:pt-8">
+                <div class="flex justify-between gap-3">
+                  <dt class="text-gray-600">Precio del dueño</dt>
+                  <dd class="text-gray-900 tabular-nums">${{ ownerPrice.toFixed(2) }}</dd>
+                </div>
+                <div class="flex justify-between gap-3">
+                  <dt class="text-gray-600">Tu ganancia por asiento</dt>
+                  <dd class="font-semibold tabular-nums" :class="priceError ? 'text-gray-500' : 'text-ok-700'">
+                    {{ priceError ? '—' : '$' + (unitPrice - ownerPrice).toFixed(2) }}
+                  </dd>
+                </div>
+              </dl>
+            </div>
+            <p class="mt-3 text-xs text-gray-600">
+              Desde el precio del dueño hasta el triple. Al dueño le transfieres solo su precio; la diferencia es tuya.
+            </p>
+          </BaseCard>
         </template>
       </div>
 
@@ -106,19 +132,28 @@
             </div>
             <div v-if="selectedTour" class="flex justify-between gap-3">
               <dt class="text-gray-600">Precio</dt>
-              <dd class="text-right text-gray-900 tabular-nums">{{ selectedSeats.length }} × ${{ Number(selectedTour.base_price).toFixed(2) }}</dd>
+              <dd class="text-right text-gray-900 tabular-nums">{{ selectedSeats.length }} × ${{ shownUnit.toFixed(2) }}</dd>
+            </div>
+            <div v-if="selectedTour && selectedSeats.length" class="flex justify-between gap-3">
+              <dt class="text-gray-600">Para el dueño</dt>
+              <dd class="text-right text-gray-900 tabular-nums">${{ ownerTotal.toFixed(2) }}</dd>
+            </div>
+            <div v-if="selectedTour && selectedSeats.length && !priceError" class="flex justify-between gap-3">
+              <dt class="text-gray-600">Tu ganancia</dt>
+              <dd class="text-right font-semibold text-ok-700 tabular-nums">${{ agencyGain.toFixed(2) }}</dd>
             </div>
           </dl>
           <div class="mt-4 flex items-baseline justify-between border-t border-gray-200 pt-4">
             <span class="text-sm font-medium text-gray-700">Total</span>
             <span class="text-2xl font-bold tracking-[-0.02em] text-gray-900 tabular-nums">${{ Number(subtotal).toFixed(2) }}</span>
           </div>
-          <BaseButton v-if="!checkoutMode" block size="lg" class="mt-4" :disabled="selectedSeats.length === 0" @click="checkoutMode = true">
+          <BaseButton v-if="!checkoutMode" block size="lg" class="mt-4" :disabled="!canContinue" @click="checkoutMode = true">
             Continuar con el pasajero <PhArrowRight :size="18" />
           </BaseButton>
           <p v-if="!checkoutMode && selectedSeats.length === 0" class="mt-2 text-center text-xs text-gray-600">
             {{ selectedTour ? 'Marca al menos un asiento.' : 'Primero elige una salida.' }}
           </p>
+          <p v-else-if="!checkoutMode && priceError" class="mt-2 text-center text-xs text-bad-700">Revisa tu precio.</p>
         </BaseCard>
       </aside>
     </div>
@@ -130,11 +165,11 @@
       <div class="mx-auto flex max-w-3xl items-center justify-between gap-4">
         <div class="min-w-0">
           <p class="text-xs text-gray-600 tabular-nums">
-            {{ selectedSeats.length }} {{ selectedSeats.length === 1 ? 'asiento' : 'asientos' }}
+            {{ selectedSeats.length }} {{ selectedSeats.length === 1 ? 'asiento' : 'asientos' }}<template v-if="selectedSeats.length && !priceError"> · ganas ${{ agencyGain.toFixed(2) }}</template>
           </p>
           <p class="text-xl font-bold text-gray-900 tabular-nums">${{ Number(subtotal).toFixed(2) }}</p>
         </div>
-        <BaseButton size="lg" :disabled="selectedSeats.length === 0" @click="checkoutMode = true">
+        <BaseButton size="lg" :disabled="!canContinue" @click="checkoutMode = true">
           Continuar <PhArrowRight :size="18" />
         </BaseButton>
       </div>
@@ -143,13 +178,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute } from "vue-router";
 import { useToursStore } from "@/stores/toursStore";
 import SeatGrid from "@/components/asientos/SeatGrid.vue";
 import Checkout from "@/components/Checkout.vue";
 import BaseCard from "@/components/ui/BaseCard.vue";
 import BaseButton from "@/components/ui/BaseButton.vue";
+import BaseInput from "@/components/ui/BaseInput.vue";
 import PageHeader from "@/components/ui/PageHeader.vue";
 import StatusBadge from "@/components/ui/StatusBadge.vue";
 import EmptyState from "@/components/ui/EmptyState.vue";
@@ -164,6 +200,7 @@ const selectedTour = ref(null);
 const selectedSeats = ref([]);
 const checkoutMode = ref(false);
 const seatGridRef = ref(null);
+const priceInput = ref("");
 
 // Cargar tours al inicio. Si llega ?assignedId= (desde "Tours disponibles"),
 // esa salida queda elegida.
@@ -178,6 +215,7 @@ onMounted(async () => {
 const displayTours = computed(() =>
   toursStore.tours.filter((item) => item.allow_agency_sales).map((item) => ({
     id: item.id,
+    tour_id: item.tour_id,
     name: item.title,             // ← antes item.tours.title
     base_price: item.base_price,  // ← antes item.tours.base_price
     chiva: item.chiva_name,       // ← antes item.chivas.name
@@ -223,6 +261,7 @@ const changeTour = () => {
 
 const selectTour = (tour) => {
   selectedTour.value = tour;
+  priceInput.value = rememberedPrice(tour);
   selectedSeats.value = [];
   checkoutMode.value = false;
 };
@@ -231,9 +270,52 @@ const updateSeats = (seats) => {
   selectedSeats.value = seats;
 };
 
+// ── Precio de la agencia ──
+// La agencia cobra lo que decida (desde el precio del dueño hasta el
+// triple, máx. $1000); al dueño le transfiere su precio. El servidor
+// vuelve a validar todo esto en reserve_tour_seats.
+const PRICE_KEY = (tourId) => `chivaspass:precio-agencia:${tourId}`;
+const toCents = (n) => Math.round(Number(n) * 100);
+
+const ownerPrice = computed(() => Number(selectedTour.value?.base_price ?? 0));
+const maxPrice = computed(() => Math.min(ownerPrice.value * 3, 1000));
+
+const rememberedPrice = (tour) => {
+  const min = Number(tour.base_price ?? 0);
+  let saved = NaN;
+  try { saved = Number(localStorage.getItem(PRICE_KEY(tour.tour_id))); } catch { /* modo privado */ }
+  const ok = Number.isFinite(saved) && saved >= min && saved <= Math.min(min * 3, 1000);
+  return (ok ? saved : min).toFixed(2);
+};
+
+const unitPrice = computed(() => {
+  const raw = String(priceInput.value ?? "").replace(",", ".").replace(/^\$/, "").trim();
+  return raw === "" ? NaN : Number(raw);
+});
+
+const priceError = computed(() => {
+  if (!selectedTour.value) return "";
+  const n = unitPrice.value;
+  if (!Number.isFinite(n)) return "Escribe tu precio por asiento, por ejemplo 12.50.";
+  if (Math.abs(n * 100 - toCents(n)) > 1e-6) return "Usa máximo dos decimales.";
+  if (toCents(n) < toCents(ownerPrice.value)) return `No puede ser menor que el precio del dueño ($${ownerPrice.value.toFixed(2)}).`;
+  if (toCents(n) > toCents(maxPrice.value)) return `Máximo $${maxPrice.value.toFixed(2)} por asiento.`;
+  return "";
+});
+
+// Mientras el precio no es válido, los totales se muestran con el del dueño.
+const shownUnit = computed(() => (priceError.value ? ownerPrice.value : unitPrice.value));
+const ownerTotal = computed(() => (selectedSeats.value.length * toCents(ownerPrice.value)) / 100);
 const subtotal = computed(() => {
   if (!selectedTour.value) return 0;
-  return selectedSeats.value.length * selectedTour.value.base_price;
+  return (selectedSeats.value.length * toCents(shownUnit.value)) / 100;
+});
+const agencyGain = computed(() => (toCents(subtotal.value) - toCents(ownerTotal.value)) / 100);
+const canContinue = computed(() => selectedSeats.value.length > 0 && !priceError.value);
+
+watch([unitPrice, priceError], ([n, err]) => {
+  if (err || !selectedTour.value?.tour_id) return;
+  try { localStorage.setItem(PRICE_KEY(selectedTour.value.tour_id), n.toFixed(2)); } catch { /* modo privado */ }
 });
 
 const resetForm = () => {

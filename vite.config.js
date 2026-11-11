@@ -16,10 +16,11 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' https://cdn.kushkipagos.com",
       // Estilos: propio + inline (Tailwind inyecta styles)
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      // Conexiones: Supabase + Kushki API (Brevo solo se llama desde las Edge Functions)
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.kushkipagos.com",
+      // Conexiones: Supabase + Kushki API (Brevo solo se llama desde las Edge Functions).
+      // 127.0.0.1:54321 es Supabase local (`supabase start`); esta CSP es solo del dev server.
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.kushkipagos.com http://127.0.0.1:54321 ws://127.0.0.1:54321",
       // Imágenes: propio + data URIs (para los QR generados)
-      "img-src 'self' data: blob: https://*.supabase.co",
+      "img-src 'self' data: blob: https://*.supabase.co http://127.0.0.1:54321",
       // Fuentes propias
       "font-src 'self' https://fonts.gstatic.com",
       // Iframes: Kushki puede abrir 3DS en iframe
