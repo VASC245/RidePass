@@ -79,6 +79,23 @@ export const useAuthStore = defineStore("auth", {
       return data;
     },
 
+    // Manda el correo con el enlace de recuperación. Supabase responde igual
+    // exista o no la cuenta, así que la pantalla no debe revelar cuál fue.
+    async requestPasswordReset(email) {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/nueva-contrasena`,
+      });
+      if (error) throw error;
+    },
+
+    // Requiere la sesión temporal que abre el enlace del correo.
+    async updatePassword(password) {
+      const { data, error } = await supabase.auth.updateUser({ password });
+      if (error) throw error;
+      if (data.user) await this.loadUserProfile(data.user.id);
+      return this.user;
+    },
+
     async loadUserProfile(userId) {
       const { data, error } = await supabase
         .from("users")
