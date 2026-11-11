@@ -162,8 +162,10 @@ const chartData = computed(() => {
   const revenueMap = {}
   const ticketsMap = {}
 
+  // Día en hora de Ecuador ('YYYY-MM-DD'): created_at viene en UTC y una venta de las 21:00
+  // se iría al día siguiente si se cortara la fecha tal cual.
   const addDay = (dateStr, amount, qty) => {
-    const d = dateStr.slice(0, 10)
+    const d = new Date(dateStr).toLocaleDateString('en-CA', { timeZone: 'America/Guayaquil' })
     revenueMap[d] = (revenueMap[d] ?? 0) + Number(amount)
     ticketsMap[d] = (ticketsMap[d] ?? 0) + qty
   }
