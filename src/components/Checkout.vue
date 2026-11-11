@@ -5,7 +5,13 @@
       <div>
         <h2 class="text-lg font-semibold text-gray-900">Datos del pasajero</h2>
         <p class="mt-1 text-sm text-gray-600">
-          {{ isOwner ? "Venta directa en efectivo. Los asientos quedan pagados al confirmar." : "Después de estos datos subirás el comprobante de la transferencia." }}
+          <template v-if="isOwner">Venta directa en efectivo. Los asientos quedan pagados al confirmar.</template>
+          <template v-else-if="isAgencySale">
+            Cobra <strong class="font-semibold text-gray-900 tabular-nums">${{ Number(total).toFixed(2) }}</strong> al pasajero.
+            Después subirás el comprobante de tu transferencia de
+            <strong class="font-semibold text-gray-900 tabular-nums">${{ Number(ownerTotal).toFixed(2) }}</strong> al dueño.
+          </template>
+          <template v-else>Después de estos datos subirás el comprobante de la transferencia.</template>
         </p>
       </div>
 
@@ -22,7 +28,11 @@
         <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Chiva</dt><dd class="text-right font-semibold text-gray-900">{{ selectedTour?.chiva }}</dd></div>
         <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Salida</dt><dd class="text-right font-semibold text-gray-900">{{ formatHour(selectedTour?.departure_time) }}</dd></div>
         <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Asientos</dt><dd class="text-right font-semibold text-gray-900 tabular-nums">{{ selectedSeats.join(", ") }}</dd></div>
-        <div class="flex items-baseline justify-between gap-4 bg-gray-50 px-4 py-3"><dt class="font-medium text-gray-700">Total</dt><dd class="text-xl font-bold text-gray-900 tabular-nums">${{ Number(total).toFixed(2) }}</dd></div>
+        <template v-if="isAgencySale">
+          <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Para el dueño</dt><dd class="text-right font-semibold text-gray-900 tabular-nums">${{ Number(ownerTotal).toFixed(2) }}</dd></div>
+          <div class="flex justify-between gap-4 px-4 py-2.5"><dt class="text-gray-600">Tu ganancia</dt><dd class="text-right font-semibold text-ok-700 tabular-nums">${{ agencyGain.toFixed(2) }}</dd></div>
+        </template>
+        <div class="flex items-baseline justify-between gap-4 bg-gray-50 px-4 py-3"><dt class="font-medium text-gray-700">{{ isAgencySale ? "Cobras al pasajero" : "Total" }}</dt><dd class="text-xl font-bold text-gray-900 tabular-nums">${{ Number(total).toFixed(2) }}</dd></div>
       </dl>
 
       <p v-if="error" role="alert" class="flex items-start gap-2 rounded-lg border border-bad-200 bg-bad-50 px-4 py-3 text-sm text-bad-700">
@@ -90,12 +100,19 @@ const props = defineProps({
   selectedTour: { type: Object, required: true },
   selectedSeats: { type: Array, default: () => [] },
   total: { type: Number, default: 0 },
+  // Venta de agencia: precio por asiento que cobra y lo que va al dueño.
+  agencyPrice: { type: Number, default: null },
+  ownerTotal: { type: Number, default: null },
 });
 
 const emit = defineEmits(["purchaseConfirmed"]);
 
 const auth = useAuthStore();
 const isOwner = computed(() => auth.user?.role === "dueño");
+const isAgencySale = computed(() =>
+  auth.user?.role === "agencia" && Number.isFinite(props.agencyPrice) && props.ownerTotal !== null);
+const agencyGain = computed(() =>
+  isAgencySale.value ? (Math.round(props.total * 100) - Math.round(props.ownerTotal * 100)) / 100 : 0);
 
 const form = ref({ name: "", cedula: "", phone: "", email: "", address: "" });
 const busy = ref(false);
@@ -142,6 +159,7 @@ const finish = async (extra) => {
       assignedChivaId: props.selectedTour.id,
       seats,
       customer: { ...form.value },
+      ...(isAgencySale.value ? { agencyPrice: props.agencyPrice } : {}),
       ...extra,
     });
     qrCodeUrl.value = await QRCode.toDataURL(data.qrPayload, { width: 320, margin: 1 });

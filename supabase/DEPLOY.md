@@ -227,3 +227,21 @@ SELECT * FROM public.payphone_sessions_overview(now() - interval '7 days', 'need
 ```
 `needs_review` = PayPhone cobró pero la venta no se pudo confirmar: buscar
 la referencia en PayPhone Business y emitir el ticket o devolver el dinero.
+
+# Sobreprecio de agencias (nov 2026)
+
+La agencia elige cuánto cobra por asiento (desde el precio del dueño hasta
+el triple, máx. $1000). El turista paga ese precio; la agencia le
+transfiere al dueño solo su precio y se queda con la diferencia
+(`agency_gain`). El comprobante que sube la agencia es por `monto_owner`.
+
+Orden (la función nueva exige la migración; la vieja sigue funcionando con
+la migración nueva):
+
+1. Migración `20261111000001_sobreprecio_agencia.sql` (pruebas en
+   `supabase/tests/database/agency_markup.test.sql`). Borra la firma de 7
+   parámetros de `reserve_tour_seats` y crea la de 8.
+2. Redesplegar `public-reserve` (manda `p_agency_price` y guarda
+   `monto_owner` / `monto_agencia`). `kushki-charge` y `payphone-prepare`
+   no cambian: el parámetro nuevo tiene valor por defecto.
+3. `npm run deploy` (pantalla "Vender boletos" con "Tu precio").

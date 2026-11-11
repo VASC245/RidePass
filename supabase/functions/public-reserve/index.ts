@@ -5,7 +5,7 @@
 //
 // Entrada:
 //   { type: 'upload-url', payload: { fileName, contentType, turnstileToken? } }
-//   { type: 'tour',     payload: { assignedChivaId, seats: number[], customer, proofNumber?, proofPath?, paymentMethod? } }
+//   { type: 'tour',     payload: { assignedChivaId, seats: number[], customer, proofNumber?, proofPath?, paymentMethod?, agencyPrice? } }
 //   { type: 'business', payload: { eventId, quantity, customer, proofNumber?, proofPath? } }
 //
 // El bucket 'comprobantes' ya no acepta subidas directas: el navegador pide
@@ -15,6 +15,8 @@
 // Quién llama y qué pasa:
 //   - Invitado / cliente (anon o rol cliente): requiere comprobante → venta 'pendiente'.
 //   - Agencia (JWT con rol agencia): requiere comprobante → venta 'pendiente' con agency_id.
+//     Puede cobrar más que el dueño (agencyPrice por asiento): el dueño recibe
+//     su precio y la agencia se queda con la diferencia.
 //   - Dueño de la salida (JWT rol dueño, paymentMethod 'efectivo'): venta 'pagado' directa.
 //
 // Respuesta: { success, saleId | ticketId, amount, qrPayload, ticketUrl, status }
@@ -121,6 +123,14 @@ serve(async (req) => {
       }
 
       const agencyId = caller?.role === "agencia" ? caller.id : null
+      // Precio por asiento que cobra la agencia. Lo valida reserve_tour_seats.
+      let agencyPrice: number | null = null
+      if (agencyId && payload.agencyPrice !== undefined && payload.agencyPrice !== null && payload.agencyPrice !== "") {
+        agencyPrice = Number(payload.agencyPrice)
+        if (!Number.isFinite(agencyPrice)) {
+          return json({ success: false, message: "El precio de la agencia no es válido." }, 400)
+        }
+      }
 
       const { data: sale, error } = await supabase.rpc("reserve_tour_seats", {
         p_assigned_chiva_id: assignedChivaId,
@@ -130,6 +140,7 @@ serve(async (req) => {
         p_status:            cashSale ? "pagado" : "pendiente",
         p_payment_method:    cashSale ? "efectivo" : "transferencia",
         p_payment_ref:       cashSale ? null : proofNumber,
+        p_agency_price:      agencyPrice,
       })
       if (error || !sale) {
         const mapped = mapDbError(error?.message ?? "")
@@ -148,8 +159,8 @@ serve(async (req) => {
           estado:             "pendiente",
           agency_name:        agencyId ? caller!.fullName : `${customer.name} (público)`,
           boletos_vendidos:   seats.length,
-          monto_owner:        sale.amount,
-          monto_agencia:      0,
+          monto_owner:        sale.owner_amount ?? sale.amount,
+          monto_agencia:      sale.agency_amount ?? 0,
           sale_id:            sale.sale_id,
         })
         if (ppErr) {
@@ -172,6 +183,7 @@ serve(async (req) => {
         quantity: seats.length,
         amount: Number(sale.total_charged ?? sale.amount),
         subtotal: Number(sale.amount),
+        sellerAmount: Number(sale.owner_amount ?? sale.amount),
         fee: Number(sale.fee ?? 0),
         paymentLabel: cashSale ? "Efectivo" : `Transferencia · ${proofNumber}`,
         ticketUrl,
@@ -184,6 +196,8 @@ serve(async (req) => {
         amount: Number(sale.amount),
         fee: Number(sale.fee ?? 0),
         total: Number(sale.total_charged ?? sale.amount),
+        ownerAmount: Number(sale.owner_amount ?? sale.amount),
+        agencyAmount: Number(sale.agency_amount ?? 0),
         qrPayload: sale.qr_payload,
         ticketUrl,
         status: info.status,

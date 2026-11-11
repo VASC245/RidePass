@@ -33,7 +33,8 @@ export const uploadProof = async (supabase, file, turnstileToken = "") => {
 };
 
 // Reserva de tour sin tarjeta.
-//   { assignedChivaId, seats, customer, proofNumber?, proofPath?, paymentMethod? }
+//   { assignedChivaId, seats, customer, proofNumber?, proofPath?, paymentMethod?, agencyPrice? }
+//   agencyPrice: precio por asiento que cobra la agencia (solo rol agencia).
 export const reserveTour = (supabase, payload) =>
   invoke(supabase, "public-reserve", { type: "tour", payload }, "No se pudo registrar la reserva.");
 

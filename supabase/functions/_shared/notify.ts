@@ -39,6 +39,7 @@ export interface TicketInfo {
   amount: number         // total pagado por el comprador (incluye cargo por servicio)
   subtotal?: number      // precio del vendedor
   fee?: number           // cargo por servicio al comprador
+  sellerAmount?: number  // lo que recibe el vendedor si no es el total (venta de agencia con sobreprecio)
   paymentLabel: string   // "Tarjeta · 123456" | "Transferencia · TRX-1" | "Efectivo"
   ticketUrl: string
 }
@@ -188,7 +189,7 @@ export function sellerSms(t: TicketInfo): string {
     : `${t.quantity} entradas`
   const head = paid ? "chivaspass: Venta confirmada." : "chivaspass: Reserva por verificar."
   const end  = paid ? "" : " Revisa el comprobante en tu panel."
-  const build = (title: string, name: string) => `${head} ${title}, ${qty}. ${name}. ${money(t.amount)}.${end}`
+  const build = (title: string, name: string) => `${head} ${title}, ${qty}. ${name}. ${money(t.sellerAmount ?? t.amount)}.${end}`
 
   // Lo que sobra de 160 se reparte entre el tour (60 %) y el cliente
   const room  = 160 - build("", "").length
