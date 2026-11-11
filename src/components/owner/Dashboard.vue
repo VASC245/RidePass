@@ -7,7 +7,6 @@
     </PageHeader>
 
     <div class="space-y-6">
-      <UpgradeBanner :tickets-used="totalTickets" :events-active="totalEvents" />
 
       <!-- Cifras del período -->
       <section class="grid overflow-hidden rounded-[var(--radius-card)] border border-gray-200 bg-white lg:grid-cols-[1.3fr_2fr]" aria-label="Cifras del período">
@@ -79,7 +78,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores/authStore'
-import UpgradeBanner from '@/components/shared/UpgradeBanner.vue'
 import PageHeader from '@/components/ui/PageHeader.vue'
 import BaseCard from '@/components/ui/BaseCard.vue'
 import EmptyState from '@/components/ui/EmptyState.vue'
@@ -140,7 +138,6 @@ const totalRevenue = computed(() => {
   return (chiva + biz).toFixed(2)
 })
 
-const totalEvents = computed(() => chivaSales.value.length)
 
 // seats llega como array (ventas nuevas) o como texto JSON (ventas antiguas)
 const seatCount = (seats) => {

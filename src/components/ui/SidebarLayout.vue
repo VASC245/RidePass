@@ -93,6 +93,7 @@
     <!-- Contenido -->
     <main class="min-w-0 flex-1">
       <div class="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-9">
+        <PlanBanner />
         <RouterView />
       </div>
     </main>
@@ -104,6 +105,7 @@ import { ref, computed, watch, onBeforeUnmount } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/authStore";
 import BrandLogo from "@/components/ui/BrandLogo.vue";
+import PlanBanner from "@/components/shared/PlanBanner.vue";
 import {
   PhList, PhX, PhSignOut, PhSquaresFour, PhMapTrifold, PhPlusCircle, PhCalendarBlank,
   PhBus, PhSteeringWheel, PhChartLineUp, PhReceipt, PhQrCode, PhGearSix, PhStack,
@@ -128,7 +130,7 @@ const ACCOUNT = {
   title: "Cuenta",
   items: [
     { label: "Configuración", path: "/panel/configuracion", icon: PhGearSix },
-    { label: "Planes",        path: "/panel/planes",        icon: PhStack },
+    { label: "Plan",          path: "/panel/planes",        icon: PhStack },
   ],
 };
 
