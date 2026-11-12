@@ -296,22 +296,16 @@ Requiere la membresía de Apple Developer Program (USD 99/año).
 4. Descargar el intermedio **Worldwide Developer Relations - G4** de
    https://www.apple.com/certificateauthority/ (`AppleWWDRCAG4.cer`).
 5. El Team ID está en developer.apple.com → Membership details.
-6. Secrets:
+6. Secrets (pide la contraseña del .p12 en pantalla, comprueba que el
+   certificado firma bien y, si hace falta, lo convierte antes de subirlo):
 
-       npx supabase secrets set --project-ref cyyzudhjpifpbpeiebsn \
-         APPLE_PASS_TYPE_ID=pass.com.chivaspass.ticket \
-         APPLE_TEAM_ID=XXXXXXXXXX \
-         APPLE_PASS_P12_BASE64="$(base64 -i ~/Desktop/pass.p12)" \
-         APPLE_PASS_P12_PASSWORD='la-contraseña-del-p12' \
-         APPLE_WWDR_CERT_BASE64="$(base64 -i ~/Downloads/AppleWWDRCAG4.cer)"
+       bash scripts/wallet-secrets.sh apple ~/Desktop/pass.p12 ~/Downloads/AppleWWDRCAG4.cer XXXXXXXXXX
 
-   Si la función registra un error al leer el .p12 (algunos macOS lo exportan
-   con un cifrado que node-forge no lee), regenerarlo así y volver a cargar
-   `APPLE_PASS_P12_BASE64`:
-
-       openssl pkcs12 -in pass.p12 -nodes -out pass.pem
-       openssl pkcs12 -export -legacy -in pass.pem -out pass-legacy.p12
-       rm pass.pem
+7. Insignia oficial: en developer.apple.com/wallet/add-to-apple-wallet-guidelines
+   → "Download badge files" (pide aceptar la licencia de Apple con la cuenta
+   de desarrollador). Guardar la versión en español, sin modificarla, como
+   `public/img/wallet/apple-wallet-es.svg`. La de Google ya está en
+   `public/img/wallet/google-wallet-es419.svg`.
 
 ## Google Wallet
 
@@ -324,9 +318,7 @@ Requiere la membresía de Apple Developer Program (USD 99/año).
    servicio con acceso de desarrollador.
 4. Secrets:
 
-       npx supabase secrets set --project-ref cyyzudhjpifpbpeiebsn \
-         GOOGLE_WALLET_ISSUER_ID=3388000000000000000 \
-         GOOGLE_WALLET_SERVICE_ACCOUNT="$(cat ~/Downloads/clave-de-la-cuenta.json)"
+       bash scripts/wallet-secrets.sh google 3388000000000000000 ~/Downloads/clave-de-la-cuenta.json
 
 5. Mientras la cuenta está en modo demo, solo pueden guardar el pase las
    cuentas de prueba que se agreguen en la consola. Para el público: consola
@@ -343,7 +335,8 @@ defecto `<PUBLIC_APP_URL>/img/brand/icon-512.png`).
    `https://cyyzudhjpifpbpeiebsn.supabase.co/functions/v1/wallet-pass?id=<uuid>&p=apple`
    desde Safari del iPhone (debe ofrecer "Agregar") y `&p=google` desde Android.
 3. `VITE_WALLET_APPLE=true` y/o `VITE_WALLET_GOOGLE=true` en `.env.production`
-   y publicar la web.
+   y publicar la web. Con eso también aparece en /creditos la línea de marcas
+   que piden Apple y Google.
 
 Límites actuales: el pase se arma al descargarlo. Si el ticket se usa
 después, el pase sigue ahí hasta que vence (un día después de la salida o
