@@ -266,3 +266,79 @@ Orden:
 Revisar ejecuciones: `select * from cron.job_run_details where jobid =
 (select jobid from cron.job where jobname = 'chivapass_purge_proofs') order by
 start_time desc limit 5;` y la respuesta HTTP en `net._http_response`.
+
+# Ticket en Apple Wallet y Google Wallet (nov 2026)
+
+La edge function `wallet-pass` convierte el ticket pagado en un pase con el
+mismo QR de `/ticket/:id` (los escáneres de embarque y de entrada lo leen
+igual). La página del ticket muestra el botón según el teléfono: iPhone →
+Apple, Android → Google, computadora → ambos. Cada botón se enciende aparte
+con `VITE_WALLET_APPLE` / `VITE_WALLET_GOOGLE` en `.env.production`.
+
+- `GET /functions/v1/wallet-pass?id=<ticket>&p=apple` → archivo `.pkpass`
+- `GET /functions/v1/wallet-pass?id=<ticket>&p=google` → 302 a Google Wallet
+- Sin JWT (navegación directa), 30 pedidos/min por IP, solo tickets pagados.
+- Sin secrets responde 503 con una página "no disponible".
+
+## Apple Wallet
+
+Requiere la membresía de Apple Developer Program (USD 99/año).
+
+1. developer.apple.com → Certificates, IDs & Profiles → Identifiers → **+** →
+   **Pass Type IDs** → descripción "chivaspass ticket", identificador
+   `pass.com.chivaspass.ticket`.
+2. Abrir ese Pass Type ID → **Create Certificate**. Pide un CSR: en la Mac,
+   Acceso a Llaveros → Asistente para certificados → Solicitar un certificado
+   de una autoridad de certificación → "Guardado en disco". Subirlo, descargar
+   `pass.cer` y abrirlo con doble clic (queda en Llavero).
+3. Llavero → Mis certificados → "Pass Type ID: pass.com.chivaspass.ticket" →
+   clic derecho → Exportar → `pass.p12` con una contraseña.
+4. Descargar el intermedio **Worldwide Developer Relations - G4** de
+   https://www.apple.com/certificateauthority/ (`AppleWWDRCAG4.cer`).
+5. El Team ID está en developer.apple.com → Membership details.
+6. Secrets (pide la contraseña del .p12 en pantalla, comprueba que el
+   certificado firma bien y, si hace falta, lo convierte antes de subirlo):
+
+       bash scripts/wallet-secrets.sh apple ~/Desktop/pass.p12 ~/Downloads/AppleWWDRCAG4.cer XXXXXXXXXX
+
+7. Insignia oficial: en developer.apple.com/wallet/add-to-apple-wallet-guidelines
+   → "Download badge files" (pide aceptar la licencia de Apple con la cuenta
+   de desarrollador). Guardar la versión en español, sin modificarla, como
+   `public/img/wallet/apple-wallet-es.svg`. La de Google ya está en
+   `public/img/wallet/google-wallet-es419.svg`.
+
+## Google Wallet
+
+1. https://pay.google.com/business/console → Google Wallet API → crear la
+   cuenta de emisor (nombre "chivaspass"). Copiar el **Issuer ID**.
+2. https://console.cloud.google.com → proyecto "chivaspass" → habilitar
+   **Google Wallet API** → IAM → Cuentas de servicio → crear
+   `wallet@...` → Claves → Agregar clave → JSON (se descarga un archivo).
+3. En la consola de Wallet → Usuarios → invitar el correo de la cuenta de
+   servicio con acceso de desarrollador.
+4. Secrets:
+
+       bash scripts/wallet-secrets.sh google 3388000000000000000 ~/Downloads/clave-de-la-cuenta.json
+
+5. Mientras la cuenta está en modo demo, solo pueden guardar el pase las
+   cuentas de prueba que se agreguen en la consola. Para el público: consola
+   → Google Wallet API → **Solicitar acceso de publicación** (piden capturas
+   del pase; tarda unos días).
+
+Opcional: `WALLET_LOGO_URL` para cambiar el logo del pase de Google (por
+defecto `<PUBLIC_APP_URL>/img/brand/icon-512.png`).
+
+## Encender
+
+1. `npx supabase functions deploy wallet-pass --project-ref cyyzudhjpifpbpeiebsn --use-api`
+2. Probar con un ticket pagado:
+   `https://cyyzudhjpifpbpeiebsn.supabase.co/functions/v1/wallet-pass?id=<uuid>&p=apple`
+   desde Safari del iPhone (debe ofrecer "Agregar") y `&p=google` desde Android.
+3. `VITE_WALLET_APPLE=true` y/o `VITE_WALLET_GOOGLE=true` en `.env.production`
+   y publicar la web. Con eso también aparece en /creditos la línea de marcas
+   que piden Apple y Google.
+
+Límites actuales: el pase se arma al descargarlo. Si el ticket se usa
+después, el pase sigue ahí hasta que vence (un día después de la salida o
+del evento); el escáner es el que impide el doble uso. Las imágenes del pase
+de Apple viven en `wallet-pass/images.ts` (generadas desde `public/img/brand`).

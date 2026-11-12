@@ -62,6 +62,12 @@ verify_jwt = true
 [functions.purge-proofs]
 verify_jwt = false
 
+# Pase del ticket en Apple Wallet / Google Wallet. Se abre con un enlace
+# normal desde /ticket/:id (el iPhone necesita navegación directa), así que
+# no lleva JWT; expone lo mismo que la página pública del ticket.
+[functions.wallet-pass]
+verify_jwt = false
+
 # Retirada: responde 410. Eliminar con `npx supabase functions delete send-ticket`.
 [functions.send-ticket]
 verify_jwt = true

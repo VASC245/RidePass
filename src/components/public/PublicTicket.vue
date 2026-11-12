@@ -62,6 +62,21 @@
           <p class="text-xs text-gray-400 mt-2">
             {{ isTour ? 'Muéstralo al conductor al abordar' : 'Muéstralo al ingresar' }}
           </p>
+
+          <!-- Llevar el mismo QR en la billetera del teléfono. Insignias
+               oficiales de Apple y Google sin modificar (alto mínimo 48 px y
+               al menos 8 px de espacio libre alrededor, según sus guías). -->
+          <div v-if="walletOptions.length && !ticket.used" class="mt-5 flex flex-col items-center gap-3">
+            <template v-for="w in walletOptions" :key="w.platform">
+              <a :href="w.href"
+                class="block rounded-full focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-orange-500">
+                <img :src="w.badge" :alt="w.label" class="h-12 w-auto" />
+              </a>
+              <p v-if="w.platform === 'apple' && !onIos" class="-mt-1 max-w-60 text-center text-xs text-gray-500">
+                Para agregarlo a Apple Wallet, abre esta página en tu iPhone.
+              </p>
+            </template>
+          </div>
         </div>
 
         <div class="px-6 pb-6 space-y-3 mt-4">
@@ -118,6 +133,7 @@ import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
 import { PhTicket, PhWifiSlash } from '@phosphor-icons/vue'
 import { supabase } from '@/lib/supabase'
+import { WALLET_BADGES, isIos, walletPlatforms, walletUrl } from '@/lib/wallet'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
 
 const route   = useRoute()
@@ -127,6 +143,14 @@ const qrUrl   = ref('')
 const loadFailed = ref(false)
 
 const isTour = computed(() => ticket.value?.kind === 'tour')
+
+const onIos = isIos()
+const walletOptions = computed(() => {
+  if (!ticket.value?.qr_payload) return []
+  return walletPlatforms().map((platform) => ({
+    platform, ...WALLET_BADGES[platform], href: walletUrl(ticket.value.id, platform),
+  }))
+})
 
 const seatList = computed(() => {
   let s = ticket.value?.seats

@@ -52,6 +52,11 @@
           Si eres autor de una de estas fotos y falta tu crédito o prefieres que la quitemos, escríbenos a
           <a :href="`mailto:${LEGAL.email}`" class="credit-link">{{ LEGAL.email }}</a>.
         </p>
+
+        <template v-if="walletMarks.length">
+          <h2 class="mt-10 text-xl font-bold tracking-tight text-gray-900">Marcas</h2>
+          <p v-for="m in walletMarks" :key="m" class="mt-3">{{ m }}</p>
+        </template>
       </div>
     </div>
   </div>
@@ -60,6 +65,14 @@
 <script setup>
 import { banosDirectory } from '@/data/banosDirectory'
 import { LEGAL } from '@/lib/legal'
+
+// Línea de crédito que piden Apple y Google al usar sus insignias de wallet.
+const walletMarks = [
+  import.meta.env.VITE_WALLET_APPLE === 'true' &&
+    'Apple, Apple Wallet, Apple Watch y iPhone son marcas comerciales de Apple Inc., registradas en EE. UU. y otros países.',
+  import.meta.env.VITE_WALLET_GOOGLE === 'true' &&
+    'Google Wallet y Billetera de Google son marcas comerciales de Google LLC.',
+].filter(Boolean)
 
 // Fotos de Wikimedia Commons: las fichas del directorio con imagen en
 // public/img/atracciones/. Para mostrar autor y licencia, añade a la ficha
