@@ -14,15 +14,15 @@
 //   APPLE_WWDR_CERT_BASE64    certificado intermedio "Apple WWDR G4" (.cer) en
 //                             base64; también acepta el texto PEM
 
-import forge from "https://esm.sh/node-forge@1.3.1"
+import { forge, type ForgeObject } from "./forge.ts"
 import { zipSync } from "https://esm.sh/fflate@0.8.2"
 
 export interface AppleSigner {
   passTypeIdentifier: string
   teamIdentifier: string
-  certificate: forge.pki.Certificate
-  privateKey: forge.pki.PrivateKey
-  wwdr: forge.pki.Certificate
+  certificate: ForgeObject
+  privateKey: ForgeObject
+  wwdr: ForgeObject
 }
 
 const enc = new TextEncoder()
@@ -40,7 +40,7 @@ function binaryToBytes(s: string): Uint8Array {
 }
 
 // Acepta un certificado en PEM o en DER codificado en base64.
-function parseCert(value: string): forge.pki.Certificate {
+function parseCert(value: string): ForgeObject {
   const v = value.trim()
   if (v.startsWith("-----BEGIN")) return forge.pki.certificateFromPem(v)
   const der = forge.util.decode64(v.replace(/\s+/g, ""))
@@ -83,7 +83,7 @@ export function signManifest(manifest: Uint8Array, signer: AppleSigner): Uint8Ar
   p7.addCertificate(signer.certificate)
   p7.addCertificate(signer.wwdr)
   p7.addSigner({
-    key: signer.privateKey as forge.pki.rsa.PrivateKey,
+    key: signer.privateKey,
     certificate: signer.certificate,
     digestAlgorithm: forge.pki.oids.sha256,
     authenticatedAttributes: [

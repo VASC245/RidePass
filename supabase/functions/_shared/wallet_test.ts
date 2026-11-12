@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertMatch } from "https://deno.land/std@0.224.0/assert/mod.ts"
-import forge from "https://esm.sh/node-forge@1.3.1"
+import { forge, type ForgeObject } from "./forge.ts"
 import { unzipSync } from "https://esm.sh/fflate@0.8.2"
 import { applePassJson, ecuadorLabel, googleClass, googleObject, type PublicTicket, toEcuadorIso, walletReady } from "./wallet.ts"
 import { type AppleSigner, appleSignerFromEnv, buildPkpass } from "./pkpass.ts"
@@ -138,12 +138,12 @@ Deno.test(".pkpass: zip con manifiesto SHA-1 correcto y firma PKCS#7 separada vÃ
   // La firma es de manifest.json: el hash firmado coincide con el SHA-256 del manifiesto.
   const bin = String.fromCharCode(...files["signature"])
   const p7 = forge.pkcs7.messageFromAsn1(forge.asn1.fromDer(bin)) as unknown as {
-    rawCapture: { authenticatedAttributes: forge.asn1.Asn1[] }
+    rawCapture: { authenticatedAttributes: ForgeObject[] }
   }
   const md = forge.md.sha256.create()
   md.update(String.fromCharCode(...files["manifest.json"]))
   const attrs = p7.rawCapture.authenticatedAttributes
-  const digestAttr = attrs.find((a) => forge.asn1.derToOid((a.value as forge.asn1.Asn1[])[0].value as string) === forge.pki.oids.messageDigest)!
-  const digest = ((digestAttr.value as forge.asn1.Asn1[])[1].value as forge.asn1.Asn1[])[0].value as string
+  const digestAttr = attrs.find((a) => forge.asn1.derToOid((a.value as ForgeObject[])[0].value as string) === forge.pki.oids.messageDigest)!
+  const digest = ((digestAttr.value as ForgeObject[])[1].value as ForgeObject[])[0].value as string
   assertEquals(forge.util.bytesToHex(digest), md.digest().toHex())
 })
