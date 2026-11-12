@@ -36,7 +36,7 @@ jobs:
       - uses: denoland/setup-deno@v2
         with:
           deno-version: v2.x
-      - run: deno check supabase/functions/public-reserve/index.ts supabase/functions/kushki-charge/index.ts supabase/functions/send-ticket/index.ts supabase/functions/payphone-prepare/index.ts supabase/functions/payphone-confirm/index.ts supabase/functions/purge-proofs/index.ts supabase/functions/contact/index.ts
+      - run: deno check supabase/functions/public-reserve/index.ts supabase/functions/kushki-charge/index.ts supabase/functions/send-ticket/index.ts supabase/functions/payphone-prepare/index.ts supabase/functions/payphone-confirm/index.ts supabase/functions/purge-proofs/index.ts supabase/functions/contact/index.ts supabase/functions/wallet-pass/index.ts
       - run: deno lint supabase/functions
       - run: deno test supabase/functions/_shared/
 

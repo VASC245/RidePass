@@ -62,6 +62,15 @@
           <p class="text-xs text-gray-400 mt-2">
             {{ isTour ? 'Muéstralo al conductor al abordar' : 'Muéstralo al ingresar' }}
           </p>
+
+          <!-- Llevar el mismo QR en la billetera del teléfono -->
+          <div v-if="walletOptions.length && !ticket.used" class="mt-4 w-full flex flex-col gap-2">
+            <a v-for="w in walletOptions" :key="w.platform" :href="w.href"
+              class="flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-500">
+              <PhWallet :size="20" weight="fill" aria-hidden="true" />
+              {{ w.label }}
+            </a>
+          </div>
         </div>
 
         <div class="px-6 pb-6 space-y-3 mt-4">
@@ -116,8 +125,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import QRCode from 'qrcode'
-import { PhTicket, PhWifiSlash } from '@phosphor-icons/vue'
+import { PhTicket, PhWallet, PhWifiSlash } from '@phosphor-icons/vue'
 import { supabase } from '@/lib/supabase'
+import { walletPlatforms, walletUrl } from '@/lib/wallet'
 import BrandLogo from '@/components/ui/BrandLogo.vue'
 
 const route   = useRoute()
@@ -127,6 +137,14 @@ const qrUrl   = ref('')
 const loadFailed = ref(false)
 
 const isTour = computed(() => ticket.value?.kind === 'tour')
+
+const WALLET_LABELS = { apple: 'Agregar a Apple Wallet', google: 'Guardar en Google Wallet' }
+const walletOptions = computed(() => {
+  if (!ticket.value?.qr_payload) return []
+  return walletPlatforms().map((platform) => ({
+    platform, label: WALLET_LABELS[platform], href: walletUrl(ticket.value.id, platform),
+  }))
+})
 
 const seatList = computed(() => {
   let s = ticket.value?.seats
